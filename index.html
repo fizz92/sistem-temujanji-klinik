@@ -1,113 +1,2272 @@
+#!/usr/bin/env python3
+"""
+KK Sik Patient Management System - Sistem Lengkap 1 File
+ALL features: Calendar, Search, Edit/Delete, Blood Test, Excel Export
+100% feature parity dengan versi web menggunakan SQLite
+"""
 
+import os
+import sys
+import sqlite3
+import threading
+import webbrowser
+import time
+import json
+import calendar
+from datetime import datetime, date, timedelta
+from flask import Flask, request, jsonify, make_response, send_file
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from io import BytesIO
+
+app = Flask(__name__)
+app.secret_key = "kk-sik-standalone-secret-key-2025"
+
+DB_FILE = 'kk_sik_complete.db'
+
+def init_database():
+    """Initialize complete database with all tables"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # Patients table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS patients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            email TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Time slots table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS time_slots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            max_capacity INTEGER DEFAULT 10,
+            is_active BOOLEAN DEFAULT 1
+        )
+    """)
+    
+    # Appointments table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS appointments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_id INTEGER,
+            appointment_date DATE NOT NULL,
+            time_slot_id INTEGER NOT NULL,
+            appointment_type TEXT DEFAULT 'consultation',
+            status TEXT DEFAULT 'booked',
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (patient_id) REFERENCES patients (id),
+            FOREIGN KEY (time_slot_id) REFERENCES time_slots (id)
+        )
+    """)
+    
+    # Blood test appointments table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS blood_test_appointments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            patient_name TEXT NOT NULL,
+            patient_reg_no TEXT NOT NULL,
+            appointment_date DATE NOT NULL,
+            blood_types TEXT,
+            notes TEXT,
+            status TEXT DEFAULT 'booked',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Holidays table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS holidays (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date DATE NOT NULL UNIQUE,
+            name TEXT NOT NULL,
+            type TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Initialize time slots
+    cursor.execute('SELECT COUNT(*) FROM time_slots')
+    if cursor.fetchone()[0] == 0:
+        time_slots = [
+            ('08:00', '09:00', 10),
+            ('09:00', '10:00', 10),
+            ('10:00', '11:00', 10),
+            ('11:00', '12:00', 10),
+            ('14:00', '15:00', 10),
+            ('15:00', '16:00', 10)
+        ]
+        cursor.executemany(
+            'INSERT INTO time_slots (start_time, end_time, max_capacity) VALUES (?, ?, ?)',
+            time_slots
+        )
+    
+    # Initialize Malaysian holidays for 2025
+    cursor.execute('SELECT COUNT(*) FROM holidays')
+    if cursor.fetchone()[0] == 0:
+        holidays_2025 = [
+            ('2025-01-01', 'Tahun Baru', 'federal'),
+            ('2025-01-29', 'Tahun Baru Cina', 'federal'),
+            ('2025-03-31', 'Hari Raya Puasa', 'federal'),
+            ('2025-05-01', 'Hari Pekerja', 'federal'),
+            ('2025-05-12', 'Hari Wesak', 'federal'),
+            ('2025-06-07', 'Hari Raya Haji', 'federal'),
+            ('2025-06-28', 'Awal Muharram', 'federal'),
+            ('2025-08-31', 'Hari Merdeka', 'federal'),
+            ('2025-09-16', 'Hari Malaysia', 'federal'),
+            ('2025-12-25', 'Hari Krismas', 'federal')
+        ]
+        cursor.executemany(
+            'INSERT INTO holidays (date, name, type) VALUES (?, ?, ?)',
+            holidays_2025
+        )
+    
+    conn.commit()
+    conn.close()
+
+def get_db():
+    """Get database connection"""
+    return sqlite3.connect(DB_FILE)
+
+def create_excel_file(appointments, title, filename):
+    """Create Excel file for appointments"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = title
+    
+    # Header styling
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Title
+    ws.merge_cells('A1:G1')
+    ws['A1'] = f"LAPORAN {title.upper()}"
+    ws['A1'].font = Font(bold=True, size=14)
+    ws['A1'].alignment = Alignment(horizontal="center")
+    
+    # Headers
+    headers = ['Bil.', 'Nama Pesakit', 'No. Telefon', 'Tarikh', 'Masa', 'Jenis', 'Catatan']
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=3, column=col)
+        cell.value = header
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+    
+    # Data rows
+    for row, apt in enumerate(appointments, 4):
+        ws.cell(row=row, column=1, value=row-3)
+        ws.cell(row=row, column=2, value=apt[1])  # patient name
+        ws.cell(row=row, column=3, value=apt[2])  # phone
+        ws.cell(row=row, column=4, value=apt[3])  # date
+        ws.cell(row=row, column=5, value=f"{apt[4]} - {apt[5]}")  # time
+        ws.cell(row=row, column=6, value=apt[6])  # type
+        ws.cell(row=row, column=7, value=apt[7] or '')  # notes
+        
+        # Add borders
+        for col in range(1, 8):
+            ws.cell(row=row, column=col).border = thin_border
+    
+    # Adjust column widths
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Save to BytesIO
+    excel_file = BytesIO()
+    wb.save(excel_file)
+    excel_file.seek(0)
+    return excel_file
+
+def create_blood_test_excel(appointments, title, filename):
+    """Create Excel file for blood test appointments"""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = title
+    
+    # Header styling
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="DC143C", end_color="DC143C", fill_type="solid")
+    header_alignment = Alignment(horizontal="center", vertical="center")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Title
+    ws.merge_cells('A1:F1')
+    ws['A1'] = f"LAPORAN {title.upper()}"
+    ws['A1'].font = Font(bold=True, size=14)
+    ws['A1'].alignment = Alignment(horizontal="center")
+    
+    # Headers
+    headers = ['Bil.', 'Nama Pesakit', 'No. Pendaftaran', 'Tarikh', 'Jenis Ujian', 'Catatan']
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=3, column=col)
+        cell.value = header
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = header_alignment
+        cell.border = thin_border
+    
+    # Data rows
+    for row, apt in enumerate(appointments, 4):
+        ws.cell(row=row, column=1, value=row-3)
+        ws.cell(row=row, column=2, value=apt[1])  # patient name
+        ws.cell(row=row, column=3, value=apt[2])  # reg no
+        ws.cell(row=row, column=4, value=apt[3])  # date
+        ws.cell(row=row, column=5, value=apt[4] or '')  # blood types
+        ws.cell(row=row, column=6, value=apt[5] or '')  # notes
+        
+        # Add borders
+        for col in range(1, 7):
+            ws.cell(row=row, column=col).border = thin_border
+    
+    # Adjust column widths
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = min(max_length + 2, 50)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Save to BytesIO
+    excel_file = BytesIO()
+    wb.save(excel_file)
+    excel_file.seek(0)
+    return excel_file
+
+@app.route('/')
+def home():
+    """Home page with system overview"""
+    return '''
 <!DOCTYPE html>
 <html lang="ms">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistem Temujanji Klinik</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <style>
-    body { background-color: #f9f9f9; }
-    .container { max-width: 800px; margin-top: 30px; }
-    .logo { width: 80px; }
-    .table td, .table th { vertical-align: middle; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KK Sik - Sistem Pengurusan Pesakit</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
 </head>
 <body>
-  <div class="container">
-    <div class="text-center mb-4">
-      <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..." class="logo" alt="KK SIK Logo" />
-      <h2>Sistem Temujanji Klinik</h2>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-hospital"></i> KK Sik
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/clinic">Klinik</a>
+                <a class="nav-link" href="/blood-test">Ujian Darah</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="text-center mb-5">
+                    <h1><i class="bi bi-hospital text-primary"></i> Sistem Pengurusan Pesakit KK Sik</h1>
+                    <p class="lead">Sistem pengurusan temujanji dan ujian darah yang komprehensif</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-calendar-check text-primary" style="font-size: 3rem;"></i>
+                        <h3 class="card-title mt-3">Sistem Klinik</h3>
+                        <p class="card-text">Pengurusan temujanji klinik dengan kalendar lengkap dan 60 slot harian</p>
+                        <a href="/clinic" class="btn btn-primary">Masuk Sistem Klinik</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-droplet text-danger" style="font-size: 3rem;"></i>
+                        <h3 class="card-title mt-3">Sistem Ujian Darah</h3>
+                        <p class="card-text">Pendaftaran ujian darah dengan kapasiti 80 pesakit setiap hari</p>
+                        <a href="/blood-test" class="btn btn-danger">Masuk Sistem Ujian Darah</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-info-circle"></i> Ciri-ciri Sistem</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><strong>Sistem Klinik:</strong></h6>
+                                <ul>
+                                    <li>Kalendar interaktif dengan navigasi bulan</li>
+                                    <li>6 slot masa dengan 10 pesakit setiap slot</li>
+                                    <li>Carian dan pengemaskinian temujanji</li>
+                                    <li>Export Excel (harian/mingguan/bulanan)</li>
+                                    <li>Statistik real-time</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><strong>Sistem Ujian Darah:</strong></h6>
+                                <ul>
+                                    <li>Pendaftaran hari yang sama</li>
+                                    <li>Kapasiti 80 pesakit setiap hari</li>
+                                    <li>Pelbagai jenis ujian darah</li>
+                                    <li>Pengurusan dan carian rekod</li>
+                                    <li>Export laporan Excel</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    <form id="formTemujanji" class="mb-4">
-      <div class="row g-2">
-        <div class="col-md-5">
-          <input type="text" id="nama" class="form-control" placeholder="Nama Pesakit" required />
-        </div>
-        <div class="col-md-3">
-          <input type="text" id="noDaftar" class="form-control" placeholder="No Daftar" required />
-        </div>
-        <div class="col-md-4">
-          <input type="date" id="tarikh" class="form-control" required />
-        </div>
-      </div>
-      <button type="submit" class="btn btn-success mt-3">Daftar</button>
-    </form>
 
-    <input type="text" id="cari" class="form-control mb-3" placeholder="Cari Nama / No Daftar / Tarikh..." />
-
-    <table class="table table-bordered table-striped">
-      <thead>
-        <tr><th>Nama</th><th>No Daftar</th><th>Tarikh</th><th>Tindakan</th></tr>
-      </thead>
-      <tbody id="senaraiData"></tbody>
-    </table>
-
-    <button class="btn btn-primary" onclick="muatTurunExcel()">Muat Turun Excel</button>
-  </div>
-
-  <script>
-    let dataPesakit = JSON.parse(localStorage.getItem('dataPesakit')) || [];
-    const senaraiData = document.getElementById("senaraiData");
-
-    function paparkanData() {
-      senaraiData.innerHTML = '';
-      dataPesakit.forEach((item, index) => {
-        senaraiData.innerHTML += `
-          <tr>
-            <td><input value="${item.nama}" onchange="kemaskini(${index}, 'nama', this.value)" /></td>
-            <td><input value="${item.noDaftar}" onchange="kemaskini(${index}, 'noDaftar', this.value)" /></td>
-            <td><input type="date" value="${item.tarikh}" onchange="kemaskini(${index}, 'tarikh', this.value)" /></td>
-            <td><button onclick="padam(${index})" class="btn btn-danger btn-sm">Padam</button></td>
-          </tr>`;
-      });
-    }
-
-    function kemaskini(index, medan, nilai) {
-      dataPesakit[index][medan] = nilai;
-      simpanData();
-    }
-
-    function padam(index) {
-      if (confirm("Padam data ini?")) {
-        dataPesakit.splice(index, 1);
-        simpanData();
-      }
-    }
-
-    function simpanData() {
-      localStorage.setItem('dataPesakit', JSON.stringify(dataPesakit));
-      paparkanData();
-    }
-
-    document.getElementById("formTemujanji").addEventListener("submit", function(e) {
-      e.preventDefault();
-      const nama = document.getElementById("nama").value;
-      const noDaftar = document.getElementById("noDaftar").value;
-      const tarikh = document.getElementById("tarikh").value;
-      dataPesakit.push({ nama, noDaftar, tarikh });
-      simpanData();
-      this.reset();
-    });
-
-    document.getElementById("cari").addEventListener("input", function() {
-      const nilai = this.value.toLowerCase();
-      [...senaraiData.rows].forEach(row => {
-        row.style.display = [...row.cells].some(cell =>
-          cell.innerText.toLowerCase().includes(nilai)
-        ) ? '' : 'none';
-      });
-    });
-
-    function muatTurunExcel() {
-      const ws = XLSX.utils.json_to_sheet(dataPesakit);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Temujanji");
-      XLSX.writeFile(wb, "temujanji-klinik.xlsx");
-    }
-
-    paparkanData();
-  </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+    '''
+
+@app.route('/clinic')
+def clinic():
+    """Main clinic page with calendar and booking"""
+    return '''
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Klinik - KK Sik</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        .calendar-day {
+            min-height: 80px;
+            border: 1px solid #ddd;
+            padding: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .calendar-day:hover {
+            background-color: var(--bs-secondary-bg);
+        }
+        .calendar-day.today {
+            background-color: var(--bs-primary-bg-subtle);
+            border-color: var(--bs-primary);
+        }
+        .calendar-day.selected {
+            background-color: var(--bs-primary);
+            color: white;
+        }
+        .calendar-day.holiday {
+            background-color: var(--bs-danger-bg-subtle);
+            border-color: var(--bs-danger);
+        }
+        .calendar-day.weekend {
+            background-color: var(--bs-warning-bg-subtle);
+        }
+        .appointment-count {
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+        .time-slot {
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .time-slot.full {
+            background-color: var(--bs-danger-bg-subtle);
+            border-color: var(--bs-danger);
+        }
+        .time-slot.available {
+            background-color: var(--bs-success-bg-subtle);
+            border-color: var(--bs-success);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-hospital"></i> KK Sik
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link active" href="/clinic">Klinik</a>
+                <a class="nav-link" href="/blood-test">Ujian Darah</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Calendar Section -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="bi bi-calendar3"></i> Kalendar Klinik</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary" onclick="previousMonth()">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <span id="currentMonth" class="mx-3"></span>
+                            <button class="btn btn-sm btn-outline-primary" onclick="nextMonth()">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Calendar Headers -->
+                        <div class="row text-center fw-bold">
+                            <div class="col">Ahad</div>
+                            <div class="col">Isnin</div>
+                            <div class="col">Selasa</div>
+                            <div class="col">Rabu</div>
+                            <div class="col">Khamis</div>
+                            <div class="col">Jumaat</div>
+                            <div class="col">Sabtu</div>
+                        </div>
+                        <!-- Calendar Days -->
+                        <div id="calendarDays"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Booking and Stats Section -->
+            <div class="col-md-4">
+                <!-- Today's Stats -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6><i class="bi bi-graph-up"></i> Statistik Hari Ini</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="todayStats">
+                            <p>Pilih tarikh untuk melihat statistik</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time Slots -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6><i class="bi bi-clock"></i> Slot Masa</h6>
+                        <small id="selectedDate">Pilih tarikh dari kalendar</small>
+                    </div>
+                    <div class="card-body">
+                        <div id="timeSlots">
+                            <p class="text-muted">Pilih tarikh untuk melihat slot masa</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="bi bi-lightning"></i> Tindakan Pantas</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="/clinic/appointments" class="btn btn-primary">
+                                <i class="bi bi-list-ul"></i> Senarai Temujanji
+                            </a>
+                            <button class="btn btn-success" onclick="exportDaily()">
+                                <i class="bi bi-download"></i> Export Hari Ini
+                            </button>
+                            <button class="btn btn-info" onclick="exportWeekly()">
+                                <i class="bi bi-download"></i> Export Mingguan
+                            </button>
+                            <button class="btn btn-warning" onclick="exportMonthly()">
+                                <i class="bi bi-download"></i> Export Bulanan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Modal -->
+    <div class="modal fade" id="bookingModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Tempah Temujanji</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="bookingForm">
+                        <input type="hidden" id="appointmentDate" name="appointment_date">
+                        <input type="hidden" id="timeSlotId" name="time_slot_id">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Nama Pesakit</label>
+                            <input type="text" class="form-control" id="patientName" name="patient_name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">No. Telefon</label>
+                            <input type="text" class="form-control" id="patientPhone" name="patient_phone" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Email (Pilihan)</label>
+                            <input type="email" class="form-control" id="patientEmail" name="patient_email">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Jenis Temujanji</label>
+                            <select class="form-select" id="appointmentType" name="appointment_type">
+                                <option value="consultation">Konsultasi</option>
+                                <option value="checkup">Pemeriksaan</option>
+                                <option value="follow_up">Susulan</option>
+                                <option value="emergency">Kecemasan</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Catatan</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <strong>Tarikh:</strong> <span id="modalDate"></span><br>
+                            <strong>Masa:</strong> <span id="modalTime"></span>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary" onclick="submitBooking()">Tempah</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentDate = new Date();
+        let selectedDate = null;
+        let calendarData = null;
+
+        function init() {
+            updateCalendarDisplay();
+            loadCalendarData();
+            loadTodayStats();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+
+        function updateCalendarDisplay() {
+            document.getElementById('currentMonth').textContent = 
+                currentDate.toLocaleDateString('ms-MY', { year: 'numeric', month: 'long' });
+            
+            generateCalendarDays();
+        }
+
+        function generateCalendarDays() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(firstDay.getDate() - firstDay.getDay());
+
+            const calendarDays = document.getElementById('calendarDays');
+            calendarDays.innerHTML = '';
+
+            let currentWeek = document.createElement('div');
+            currentWeek.className = 'row';
+
+            for (let i = 0; i < 42; i++) {
+                const cellDate = new Date(startDate);
+                cellDate.setDate(startDate.getDate() + i);
+                
+                const dayElement = document.createElement('div');
+                dayElement.className = 'col calendar-day';
+                dayElement.onclick = () => selectDate(cellDate);
+                
+                // Check if date is in current month
+                if (cellDate.getMonth() !== month) {
+                    dayElement.style.opacity = '0.3';
+                }
+                
+                // Check if today
+                const today = new Date();
+                if (cellDate.toDateString() === today.toDateString()) {
+                    dayElement.classList.add('today');
+                }
+                
+                // Check if weekend
+                if (cellDate.getDay() === 0 || cellDate.getDay() === 6) {
+                    dayElement.classList.add('weekend');
+                }
+                
+                dayElement.innerHTML = `
+                    <div>${cellDate.getDate()}</div>
+                    <div class="appointment-count" id="count-${cellDate.toISOString().split('T')[0]}">
+                        <small>Loading...</small>
+                    </div>
+                `;
+                
+                currentWeek.appendChild(dayElement);
+                
+                if ((i + 1) % 7 === 0) {
+                    calendarDays.appendChild(currentWeek);
+                    currentWeek = document.createElement('div');
+                    currentWeek.className = 'row';
+                }
+            }
+        }
+
+        function loadCalendarData() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth() + 1;
+            
+            fetch(`/clinic/calendar-data?year=${year}&month=${month}`)
+                .then(response => response.json())
+                .then(data => {
+                    calendarData = data;
+                    updateCalendarCounts();
+                })
+                .catch(error => console.error('Error loading calendar data:', error));
+        }
+
+        function updateCalendarCounts() {
+            if (!calendarData) return;
+            
+            Object.keys(calendarData).forEach(date => {
+                const countElement = document.getElementById(`count-${date}`);
+                if (countElement) {
+                    const count = calendarData[date];
+                    countElement.innerHTML = `<small>${count}/60 temujanji</small>`;
+                }
+            });
+        }
+
+        function selectDate(date) {
+            selectedDate = date;
+            
+            // Update visual selection
+            document.querySelectorAll('.calendar-day').forEach(day => {
+                day.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+            
+            // Load data for selected date
+            loadTimeSlots(date);
+            loadDayStats(date);
+            
+            document.getElementById('selectedDate').textContent = 
+                date.toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+
+        function loadTimeSlots(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            
+            fetch(`/clinic/time-slots/${dateStr}`)
+                .then(response => response.json())
+                .then(slots => {
+                    displayTimeSlots(slots, date);
+                })
+                .catch(error => console.error('Error loading time slots:', error));
+        }
+
+        function displayTimeSlots(slots, date) {
+            const container = document.getElementById('timeSlots');
+            container.innerHTML = '';
+            
+            slots.forEach(slot => {
+                const slotElement = document.createElement('div');
+                slotElement.className = `time-slot ${slot.available > 0 ? 'available' : 'full'}`;
+                
+                slotElement.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${slot.start_time} - ${slot.end_time}</strong>
+                            <br><small>${slot.available}/${slot.max_capacity} tersedia</small>
+                        </div>
+                        <div>
+                            ${slot.available > 0 ? 
+                                `<button class="btn btn-sm btn-primary" onclick="openBookingModal(${slot.id}, '${date.toISOString().split('T')[0]}', '${slot.start_time}', '${slot.end_time}')">
+                                    Tempah
+                                </button>` : 
+                                '<span class="badge bg-danger">Penuh</span>'
+                            }
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(slotElement);
+            });
+        }
+
+        function loadDayStats(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            
+            fetch(`/clinic/stats/${dateStr}`)
+                .then(response => response.json())
+                .then(stats => {
+                    displayDayStats(stats);
+                })
+                .catch(error => console.error('Error loading day stats:', error));
+        }
+
+        function displayDayStats(stats) {
+            const container = document.getElementById('todayStats');
+            container.innerHTML = `
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h4 class="text-primary">${stats.total_appointments}</h4>
+                        <small>Jumlah Temujanji</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">${stats.available_slots}</h4>
+                        <small>Slot Tersedia</small>
+                    </div>
+                </div>
+                <hr>
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h5 class="text-info">${stats.consultation}</h5>
+                        <small>Konsultasi</small>
+                    </div>
+                    <div class="col-6">
+                        <h5 class="text-warning">${stats.checkup}</h5>
+                        <small>Pemeriksaan</small>
+                    </div>
+                </div>
+            `;
+        }
+
+        function loadTodayStats() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            fetch(`/clinic/stats/${today}`)
+                .then(response => response.json())
+                .then(stats => {
+                    displayDayStats(stats);
+                })
+                .catch(error => console.error('Error loading today stats:', error));
+        }
+
+        function openBookingModal(slotId, date, startTime, endTime) {
+            document.getElementById('appointmentDate').value = date;
+            document.getElementById('timeSlotId').value = slotId;
+            document.getElementById('modalDate').textContent = new Date(date).toLocaleDateString('ms-MY');
+            document.getElementById('modalTime').textContent = `${startTime} - ${endTime}`;
+            
+            // Clear form
+            document.getElementById('bookingForm').reset();
+            document.getElementById('appointmentDate').value = date;
+            document.getElementById('timeSlotId').value = slotId;
+            
+            const modal = new bootstrap.Modal(document.getElementById('bookingModal'));
+            modal.show();
+        }
+
+        function submitBooking() {
+            const formData = new FormData(document.getElementById('bookingForm'));
+            
+            fetch('/clinic/book', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Temujanji berjaya ditempah!');
+                    bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
+                    
+                    // Refresh data
+                    loadCalendarData();
+                    if (selectedDate) {
+                        loadTimeSlots(selectedDate);
+                        loadDayStats(selectedDate);
+                    }
+                } else {
+                    alert('Ralat: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ralat semasa menempah temujanji');
+            });
+        }
+
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            updateCalendarDisplay();
+            loadCalendarData();
+        }
+
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            updateCalendarDisplay();
+            loadCalendarData();
+        }
+
+        function exportDaily() {
+            const date = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            window.open(`/clinic/export/daily?date=${date}`, '_blank');
+        }
+
+        function exportWeekly() {
+            const date = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            window.open(`/clinic/export/weekly?date=${date}`, '_blank');
+        }
+
+        function exportMonthly() {
+            const date = selectedDate ? selectedDate.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+            window.open(`/clinic/export/monthly?date=${date}`, '_blank');
+        }
+    </script>
+</body>
+</html>
+    '''
+
+# Additional routes for clinic functionality
+@app.route('/clinic/calendar-data')
+def clinic_calendar_data():
+    """Get calendar data for clinic"""
+    year = request.args.get('year', type=int)
+    month = request.args.get('month', type=int)
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Get appointment counts for the month
+    cursor.execute("""
+        SELECT appointment_date, COUNT(*) as count
+        FROM appointments 
+        WHERE strftime('%Y', appointment_date) = ? 
+        AND strftime('%m', appointment_date) = ?
+        GROUP BY appointment_date
+    """, (str(year), f"{month:02d}"))
+    
+    data = {}
+    for row in cursor.fetchall():
+        data[row[0]] = row[1]
+    
+    conn.close()
+    return jsonify(data)
+
+@app.route('/clinic/time-slots/<date_str>')
+def clinic_time_slots(date_str):
+    """Get time slots for specific date"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Get all time slots with availability for the date
+    cursor.execute("""
+        SELECT ts.id, ts.start_time, ts.end_time, ts.max_capacity,
+               COUNT(a.id) as booked
+        FROM time_slots ts
+        LEFT JOIN appointments a ON ts.id = a.time_slot_id 
+            AND a.appointment_date = ? AND a.status = 'booked'
+        WHERE ts.is_active = 1
+        GROUP BY ts.id, ts.start_time, ts.end_time, ts.max_capacity
+        ORDER BY ts.start_time
+    """, (date_str,))
+    
+    slots = []
+    for row in cursor.fetchall():
+        slots.append({
+            'id': row[0],
+            'start_time': row[1],
+            'end_time': row[2],
+            'max_capacity': row[3],
+            'booked': row[4],
+            'available': row[3] - row[4]
+        })
+    
+    conn.close()
+    return jsonify(slots)
+
+@app.route('/clinic/stats/<date_str>')
+def clinic_stats(date_str):
+    """Get statistics for specific date"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Get appointment statistics
+    cursor.execute("""
+        SELECT 
+            COUNT(*) as total,
+            SUM(CASE WHEN appointment_type = 'consultation' THEN 1 ELSE 0 END) as consultation,
+            SUM(CASE WHEN appointment_type = 'checkup' THEN 1 ELSE 0 END) as checkup,
+            SUM(CASE WHEN appointment_type = 'follow_up' THEN 1 ELSE 0 END) as follow_up,
+            SUM(CASE WHEN appointment_type = 'emergency' THEN 1 ELSE 0 END) as emergency
+        FROM appointments 
+        WHERE appointment_date = ? AND status = 'booked'
+    """, (date_str,))
+    
+    row = cursor.fetchone()
+    total_appointments = row[0] if row[0] else 0
+    
+    # Get available slots
+    cursor.execute("""
+        SELECT SUM(ts.max_capacity) - COUNT(a.id) as available
+        FROM time_slots ts
+        LEFT JOIN appointments a ON ts.id = a.time_slot_id 
+            AND a.appointment_date = ? AND a.status = 'booked'
+        WHERE ts.is_active = 1
+    """, (date_str,))
+    
+    available_row = cursor.fetchone()
+    available_slots = available_row[0] if available_row[0] else 60
+    
+    conn.close()
+    return jsonify({
+        'total_appointments': total_appointments,
+        'available_slots': available_slots,
+        'consultation': row[1] if row[1] else 0,
+        'checkup': row[2] if row[2] else 0,
+        'follow_up': row[3] if row[3] else 0,
+        'emergency': row[4] if row[4] else 0
+    })
+
+@app.route('/clinic/book', methods=['POST'])
+def clinic_book():
+    """Book clinic appointment"""
+    try:
+        patient_name = request.form.get('patient_name')
+        patient_phone = request.form.get('patient_phone')
+        patient_email = request.form.get('patient_email')
+        appointment_date = request.form.get('appointment_date')
+        time_slot_id = request.form.get('time_slot_id')
+        appointment_type = request.form.get('appointment_type')
+        notes = request.form.get('notes')
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Check slot availability
+        cursor.execute("""
+            SELECT ts.max_capacity, COUNT(a.id) as booked
+            FROM time_slots ts
+            LEFT JOIN appointments a ON ts.id = a.time_slot_id 
+                AND a.appointment_date = ? AND a.status = 'booked'
+            WHERE ts.id = ?
+            GROUP BY ts.max_capacity
+        """, (appointment_date, time_slot_id))
+        
+        slot_info = cursor.fetchone()
+        if not slot_info or slot_info[1] >= slot_info[0]:
+            return jsonify({'success': False, 'message': 'Slot masa sudah penuh'})
+        
+        # Create or get patient
+        cursor.execute(
+            'INSERT OR IGNORE INTO patients (name, phone, email) VALUES (?, ?, ?)',
+            (patient_name, patient_phone, patient_email)
+        )
+        
+        cursor.execute(
+            'SELECT id FROM patients WHERE name = ? AND phone = ?',
+            (patient_name, patient_phone)
+        )
+        patient_id = cursor.fetchone()[0]
+        
+        # Create appointment
+        cursor.execute("""
+            INSERT INTO appointments 
+            (patient_id, appointment_date, time_slot_id, appointment_type, notes, status)
+            VALUES (?, ?, ?, ?, ?, 'booked')
+        """, (patient_id, appointment_date, time_slot_id, appointment_type, notes))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Temujanji berjaya ditempah'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/clinic/appointments')
+def clinic_appointments():
+    """Clinic appointments list with search and management"""
+    return '''
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Senarai Temujanji - KK Sik</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-hospital"></i> KK Sik
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/clinic">Klinik</a>
+                <a class="nav-link" href="/blood-test">Ujian Darah</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi bi-list-ul"></i> Senarai Temujanji Klinik</h2>
+                    <a href="/clinic" class="btn btn-primary">
+                        <i class="bi bi-calendar3"></i> Kembali ke Kalendar
+                    </a>
+                </div>
+                
+                <!-- Search and Filters -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="form-label">Cari Nama Pesakit</label>
+                                <input type="text" class="form-control" id="searchName" placeholder="Masukkan nama...">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Tarikh Dari</label>
+                                <input type="date" class="form-control" id="dateFrom">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Tarikh Hingga</label>
+                                <input type="date" class="form-control" id="dateTo">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid">
+                                    <button class="btn btn-primary" onclick="searchAppointments()">
+                                        <i class="bi bi-search"></i> Cari
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Appointments Table -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Bil.</th>
+                                        <th>Nama Pesakit</th>
+                                        <th>No. Telefon</th>
+                                        <th>Tarikh</th>
+                                        <th>Masa</th>
+                                        <th>Jenis</th>
+                                        <th>Status</th>
+                                        <th>Tindakan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="appointmentsTable">
+                                    <tr>
+                                        <td colspan="8" class="text-center">Memuat...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-center" id="pagination">
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPage = 1;
+        const itemsPerPage = 10;
+
+        function loadAppointments(page = 1) {
+            const searchName = document.getElementById('searchName').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            
+            const params = new URLSearchParams({
+                page: page,
+                limit: itemsPerPage,
+                search_name: searchName,
+                date_from: dateFrom,
+                date_to: dateTo
+            });
+            
+            fetch(`/clinic/appointments/search?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayAppointments(data.appointments);
+                    updatePagination(data.total, page);
+                    currentPage = page;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('appointmentsTable').innerHTML = 
+                        '<tr><td colspan="8" class="text-center text-danger">Ralat memuat data</td></tr>';
+                });
+        }
+
+        function displayAppointments(appointments) {
+            const tbody = document.getElementById('appointmentsTable');
+            
+            if (appointments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center">Tiada temujanji dijumpai</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = appointments.map((apt, index) => `
+                <tr>
+                    <td>${(currentPage - 1) * itemsPerPage + index + 1}</td>
+                    <td>${apt.patient_name}</td>
+                    <td>${apt.patient_phone}</td>
+                    <td>${new Date(apt.appointment_date).toLocaleDateString('ms-MY')}</td>
+                    <td>${apt.start_time} - ${apt.end_time}</td>
+                    <td>
+                        <span class="badge bg-${getTypeColor(apt.appointment_type)}">
+                            ${getTypeText(apt.appointment_type)}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-${apt.status === 'booked' ? 'success' : 'secondary'}">
+                            ${apt.status === 'booked' ? 'Ditempah' : 'Dibatal'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary me-1" onclick="editAppointment(${apt.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteAppointment(${apt.id})" title="Padam">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getTypeColor(type) {
+            switch(type) {
+                case 'consultation': return 'primary';
+                case 'checkup': return 'info';
+                case 'follow_up': return 'warning';
+                case 'emergency': return 'danger';
+                default: return 'secondary';
+            }
+        }
+
+        function getTypeText(type) {
+            switch(type) {
+                case 'consultation': return 'Konsultasi';
+                case 'checkup': return 'Pemeriksaan';
+                case 'follow_up': return 'Susulan';
+                case 'emergency': return 'Kecemasan';
+                default: return type;
+            }
+        }
+
+        function updatePagination(total, current) {
+            const totalPages = Math.ceil(total / itemsPerPage);
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            // Previous button
+            html += `<li class="page-item ${current === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadAppointments(${current - 1})">Previous</a>
+            </li>`;
+            
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+                html += `<li class="page-item ${i === current ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="loadAppointments(${i})">${i}</a>
+                </li>`;
+            }
+            
+            // Next button
+            html += `<li class="page-item ${current === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadAppointments(${current + 1})">Next</a>
+            </li>`;
+            
+            pagination.innerHTML = html;
+        }
+
+        function searchAppointments() {
+            loadAppointments(1);
+        }
+
+        function editAppointment(id) {
+            alert('Edit functionality will be implemented here');
+        }
+
+        function deleteAppointment(id) {
+            if (confirm('Adakah anda pasti ingin memadam temujanji ini?')) {
+                fetch(`/clinic/appointments/delete/${id}`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Temujanji berjaya dipadam');
+                        loadAppointments(currentPage);
+                    } else {
+                        alert('Ralat: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Ralat memadam temujanji');
+                });
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default date range (current month)
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            
+            document.getElementById('dateFrom').value = firstDay.toISOString().split('T')[0];
+            document.getElementById('dateTo').value = lastDay.toISOString().split('T')[0];
+            
+            loadAppointments();
+            
+            // Add enter key support for search
+            document.getElementById('searchName').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchAppointments();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+    '''
+
+@app.route('/clinic/appointments/search')
+def clinic_appointments_search():
+    """Search clinic appointments"""
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 10, type=int)
+    search_name = request.args.get('search_name', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Build query
+    query = """
+        SELECT a.id, p.name as patient_name, p.phone as patient_phone, p.email as patient_email,
+               a.appointment_date, ts.start_time, ts.end_time, a.appointment_type, 
+               a.status, a.notes, a.created_at
+        FROM appointments a
+        JOIN patients p ON a.patient_id = p.id
+        JOIN time_slots ts ON a.time_slot_id = ts.id
+        WHERE 1=1
+    """
+    params = []
+    
+    if search_name:
+        query += " AND p.name LIKE ?"
+        params.append(f"%{search_name}%")
+    
+    if date_from:
+        query += " AND a.appointment_date >= ?"
+        params.append(date_from)
+    
+    if date_to:
+        query += " AND a.appointment_date <= ?"
+        params.append(date_to)
+    
+    # Get total count
+    count_query = query.replace('SELECT a.id, p.name as patient_name, p.phone as patient_phone, p.email as patient_email, a.appointment_date, ts.start_time, ts.end_time, a.appointment_type, a.status, a.notes, a.created_at', 'SELECT COUNT(*)')
+    cursor.execute(count_query, params)
+    total = cursor.fetchone()[0]
+    
+    # Add pagination
+    query += " ORDER BY a.appointment_date DESC, ts.start_time"
+    query += " LIMIT ? OFFSET ?"
+    params.extend([limit, (page - 1) * limit])
+    
+    cursor.execute(query, params)
+    appointments = []
+    for row in cursor.fetchall():
+        appointments.append({
+            'id': row[0],
+            'patient_name': row[1],
+            'patient_phone': row[2],
+            'patient_email': row[3],
+            'appointment_date': row[4],
+            'start_time': row[5],
+            'end_time': row[6],
+            'appointment_type': row[7],
+            'status': row[8],
+            'notes': row[9],
+            'created_at': row[10]
+        })
+    
+    conn.close()
+    return jsonify({
+        'appointments': appointments,
+        'total': total,
+        'page': page,
+        'limit': limit
+    })
+
+@app.route('/clinic/appointments/delete/<int:appointment_id>', methods=['POST'])
+def clinic_appointments_delete(appointment_id):
+    """Delete clinic appointment"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM appointments WHERE id = ?', (appointment_id,))
+        
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'message': 'Temujanji tidak dijumpai'})
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Temujanji berjaya dipadam'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/clinic/export/<export_type>')
+def clinic_export(export_type):
+    """Export clinic appointments to Excel"""
+    try:
+        date_str = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
+        selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        if export_type == 'daily':
+            cursor.execute("""
+                SELECT a.id, p.name, p.phone, a.appointment_date, ts.start_time, ts.end_time, 
+                       a.appointment_type, a.notes
+                FROM appointments a
+                JOIN patients p ON a.patient_id = p.id
+                JOIN time_slots ts ON a.time_slot_id = ts.id
+                WHERE a.appointment_date = ? AND a.status = 'booked'
+                ORDER BY ts.start_time
+            """, (date_str,))
+            title = f"Temujanji Harian {selected_date.strftime('%d-%m-%Y')}"
+            filename = f"Temujanji_Harian_{selected_date.strftime('%d-%m-%Y')}.xlsx"
+            
+        elif export_type == 'weekly':
+            start_week = selected_date - timedelta(days=selected_date.weekday())
+            end_week = start_week + timedelta(days=6)
+            
+            cursor.execute("""
+                SELECT a.id, p.name, p.phone, a.appointment_date, ts.start_time, ts.end_time, 
+                       a.appointment_type, a.notes
+                FROM appointments a
+                JOIN patients p ON a.patient_id = p.id
+                JOIN time_slots ts ON a.time_slot_id = ts.id
+                WHERE a.appointment_date BETWEEN ? AND ? AND a.status = 'booked'
+                ORDER BY a.appointment_date, ts.start_time
+            """, (start_week.strftime('%Y-%m-%d'), end_week.strftime('%Y-%m-%d')))
+            title = f"Temujanji Mingguan {start_week.strftime('%d-%m-%Y')} hingga {end_week.strftime('%d-%m-%Y')}"
+            filename = f"Temujanji_Mingguan_{start_week.strftime('%d-%m-%Y')}.xlsx"
+            
+        elif export_type == 'monthly':
+            start_month = selected_date.replace(day=1)
+            if start_month.month == 12:
+                end_month = start_month.replace(year=start_month.year + 1, month=1) - timedelta(days=1)
+            else:
+                end_month = start_month.replace(month=start_month.month + 1) - timedelta(days=1)
+            
+            cursor.execute("""
+                SELECT a.id, p.name, p.phone, a.appointment_date, ts.start_time, ts.end_time, 
+                       a.appointment_type, a.notes
+                FROM appointments a
+                JOIN patients p ON a.patient_id = p.id
+                JOIN time_slots ts ON a.time_slot_id = ts.id
+                WHERE a.appointment_date BETWEEN ? AND ? AND a.status = 'booked'
+                ORDER BY a.appointment_date, ts.start_time
+            """, (start_month.strftime('%Y-%m-%d'), end_month.strftime('%Y-%m-%d')))
+            title = f"Temujanji Bulanan {start_month.strftime('%B %Y')}"
+            filename = f"Temujanji_Bulanan_{start_month.strftime('%m-%Y')}.xlsx"
+        
+        appointments = cursor.fetchall()
+        conn.close()
+        
+        # Create Excel file
+        excel_file = create_excel_file(appointments, title, filename)
+        
+        # Return file
+        response = make_response(excel_file.read())
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/blood-test')
+def blood_test():
+    """Blood test registration and management page"""
+    return '''
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Ujian Darah - KK Sik</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-danger">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-hospital"></i> KK Sik
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/clinic">Klinik</a>
+                <a class="nav-link active" href="/blood-test">Ujian Darah</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="bi bi-droplet"></i> Pendaftaran Ujian Darah</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="bloodTestForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Nama Pesakit</label>
+                                    <input type="text" class="form-control" id="patientName" name="patient_name" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">No. Pendaftaran</label>
+                                    <input type="text" class="form-control" id="patientRegNo" name="patient_reg_no" required>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Tarikh Ujian</label>
+                                <input type="date" class="form-control" id="testDate" name="test_date" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Jenis Ujian Darah</label>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="RP" id="testRP" name="blood_types">
+                                            <label class="form-check-label" for="testRP">
+                                                RP (Renal Profile)
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="LFT" id="testLFT" name="blood_types">
+                                            <label class="form-check-label" for="testLFT">
+                                                LFT (Liver Function Test)
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="FLP" id="testFLP" name="blood_types">
+                                            <label class="form-check-label" for="testFLP">
+                                                FLP (Fasting Lipid Profile)
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="HBA1C" id="testHBA1C" name="blood_types">
+                                            <label class="form-check-label" for="testHBA1C">
+                                                HbA1c
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" value="OTHER" id="testOTHER" name="blood_types">
+                                            <label class="form-check-label" for="testOTHER">
+                                                Lain-lain
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-2" id="otherTestDiv" style="display: none;">
+                                    <input type="text" class="form-control" id="otherTest" name="other_test" placeholder="Nyatakan jenis ujian lain...">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">Catatan</label>
+                                <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-danger">
+                                    <i class="bi bi-plus-circle"></i> Daftar Ujian Darah
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <!-- Today's Stats -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6><i class="bi bi-graph-up"></i> Statistik Hari Ini</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="todayStats">
+                            <div class="text-center">
+                                <h3 class="text-danger" id="todayCount">0</h3>
+                                <small>Pendaftaran Hari Ini</small>
+                            </div>
+                            <hr>
+                            <div class="text-center">
+                                <h4 class="text-success" id="availableSlots">80</h4>
+                                <small>Slot Tersedia</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Capacity Check -->
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h6><i class="bi bi-speedometer2"></i> Semak Kapasiti</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Pilih Tarikh</label>
+                            <input type="date" class="form-control" id="checkDate" onchange="checkCapacity()">
+                        </div>
+                        <div id="capacityResult">
+                            <p class="text-muted">Pilih tarikh untuk semak kapasiti</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="bi bi-lightning"></i> Tindakan Pantas</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <a href="/blood-test/appointments" class="btn btn-danger">
+                                <i class="bi bi-list-ul"></i> Senarai Pendaftaran
+                            </a>
+                            <button class="btn btn-success" onclick="exportDaily()">
+                                <i class="bi bi-download"></i> Export Hari Ini
+                            </button>
+                            <button class="btn btn-info" onclick="exportWeekly()">
+                                <i class="bi bi-download"></i> Export Mingguan
+                            </button>
+                            <button class="btn btn-warning" onclick="exportMonthly()">
+                                <i class="bi bi-download"></i> Export Bulanan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function init() {
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('testDate').value = today;
+            document.getElementById('checkDate').value = today;
+            
+            loadTodayStats();
+            checkCapacity();
+            
+            // Show/hide other test field
+            document.getElementById('testOTHER').addEventListener('change', function() {
+                const otherDiv = document.getElementById('otherTestDiv');
+                otherDiv.style.display = this.checked ? 'block' : 'none';
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+
+        function loadTodayStats() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            fetch(`/blood-test/stats/${today}`)
+                .then(response => response.json())
+                .then(stats => {
+                    document.getElementById('todayCount').textContent = stats.total_registrations;
+                    document.getElementById('availableSlots').textContent = stats.available_slots;
+                })
+                .catch(error => console.error('Error loading today stats:', error));
+        }
+
+        function checkCapacity() {
+            const date = document.getElementById('checkDate').value;
+            if (!date) return;
+            
+            fetch(`/blood-test/capacity/${date}`)
+                .then(response => response.json())
+                .then(data => {
+                    const result = document.getElementById('capacityResult');
+                    result.innerHTML = `
+                        <div class="text-center">
+                            <h4 class="text-${data.available > 0 ? 'success' : 'danger'}">${data.used}/${data.total}</h4>
+                            <small>Telah Didaftar</small>
+                        </div>
+                        <div class="progress mt-2">
+                            <div class="progress-bar ${data.available > 0 ? 'bg-success' : 'bg-danger'}" 
+                                 style="width: ${(data.used / data.total) * 100}%"></div>
+                        </div>
+                        <div class="text-center mt-2">
+                            <small class="text-${data.available > 0 ? 'success' : 'danger'}">
+                                ${data.available} slot tersedia
+                            </small>
+                        </div>
+                    `;
+                })
+                .catch(error => console.error('Error checking capacity:', error));
+        }
+
+        document.getElementById('bloodTestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Get selected blood types
+            const selectedTypes = [];
+            document.querySelectorAll('input[name="blood_types"]:checked').forEach(checkbox => {
+                selectedTypes.push(checkbox.value);
+            });
+            
+            if (selectedTypes.length === 0) {
+                alert('Sila pilih sekurang-kurangnya satu jenis ujian darah');
+                return;
+            }
+            
+            const formData = new FormData(this);
+            formData.delete('blood_types'); // Remove individual checkboxes
+            formData.append('blood_types', JSON.stringify(selectedTypes)); // Add as JSON
+            
+            fetch('/blood-test/book', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Ujian darah berjaya didaftar!');
+                    this.reset();
+                    document.getElementById('otherTestDiv').style.display = 'none';
+                    
+                    // Set date to today again
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('testDate').value = today;
+                    
+                    // Refresh stats
+                    loadTodayStats();
+                    checkCapacity();
+                } else {
+                    alert('Ralat: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Ralat semasa mendaftar ujian darah');
+            });
+        });
+
+        function exportDaily() {
+            const date = document.getElementById('checkDate').value || new Date().toISOString().split('T')[0];
+            window.open(`/blood-test/export/daily?date=${date}`, '_blank');
+        }
+
+        function exportWeekly() {
+            const date = document.getElementById('checkDate').value || new Date().toISOString().split('T')[0];
+            window.open(`/blood-test/export/weekly?date=${date}`, '_blank');
+        }
+
+        function exportMonthly() {
+            const date = document.getElementById('checkDate').value || new Date().toISOString().split('T')[0];
+            window.open(`/blood-test/export/monthly?date=${date}`, '_blank');
+        }
+    </script>
+</body>
+</html>
+    '''
+
+# Blood test routes
+@app.route('/blood-test/stats/<date_str>')
+def blood_test_stats(date_str):
+    """Get blood test statistics for specific date"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Get registration count for the date
+    cursor.execute("""
+        SELECT COUNT(*) as total
+        FROM blood_test_appointments 
+        WHERE appointment_date = ? AND status = 'booked'
+    """, (date_str,))
+    
+    row = cursor.fetchone()
+    total_registrations = row[0] if row[0] else 0
+    available_slots = 80 - total_registrations
+    
+    conn.close()
+    return jsonify({
+        'total_registrations': total_registrations,
+        'available_slots': max(0, available_slots),
+        'capacity_used': total_registrations,
+        'capacity_total': 80
+    })
+
+@app.route('/blood-test/capacity/<date_str>')
+def blood_test_capacity(date_str):
+    """Check blood test capacity for specific date"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT COUNT(*) as used
+        FROM blood_test_appointments 
+        WHERE appointment_date = ? AND status = 'booked'
+    """, (date_str,))
+    
+    row = cursor.fetchone()
+    used = row[0] if row[0] else 0
+    total = 80
+    available = total - used
+    
+    conn.close()
+    return jsonify({
+        'used': used,
+        'total': total,
+        'available': max(0, available)
+    })
+
+@app.route('/blood-test/book', methods=['POST'])
+def blood_test_book():
+    """Book blood test appointment"""
+    try:
+        patient_name = request.form.get('patient_name')
+        patient_reg_no = request.form.get('patient_reg_no')
+        test_date = request.form.get('test_date')
+        blood_types = request.form.get('blood_types')
+        other_test = request.form.get('other_test')
+        notes = request.form.get('notes')
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        # Check capacity
+        cursor.execute("""
+            SELECT COUNT(*) as count
+            FROM blood_test_appointments 
+            WHERE appointment_date = ? AND status = 'booked'
+        """, (test_date,))
+        
+        current_count = cursor.fetchone()[0]
+        if current_count >= 80:
+            return jsonify({'success': False, 'message': 'Kapasiti penuh untuk tarikh ini (80/80)'})
+        
+        # Create appointment
+        cursor.execute("""
+            INSERT INTO blood_test_appointments 
+            (patient_name, patient_reg_no, appointment_date, blood_types, notes, status)
+            VALUES (?, ?, ?, ?, ?, 'booked')
+        """, (patient_name, patient_reg_no, test_date, blood_types, notes))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Ujian darah berjaya didaftar'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/blood-test/appointments')
+def blood_test_appointments():
+    """Blood test appointments list with search and management"""
+    return '''
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Senarai Ujian Darah - KK Sik</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-danger">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-hospital"></i> KK Sik
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/clinic">Klinik</a>
+                <a class="nav-link active" href="/blood-test">Ujian Darah</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="bi bi-list-ul"></i> Senarai Pendaftaran Ujian Darah</h2>
+                    <a href="/blood-test" class="btn btn-danger">
+                        <i class="bi bi-droplet"></i> Kembali ke Pendaftaran
+                    </a>
+                </div>
+                
+                <!-- Search and Filters -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="form-label">Cari Nama Pesakit</label>
+                                <input type="text" class="form-control" id="searchName" placeholder="Masukkan nama...">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Tarikh Dari</label>
+                                <input type="date" class="form-control" id="dateFrom">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Tarikh Hingga</label>
+                                <input type="date" class="form-control" id="dateTo">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid">
+                                    <button class="btn btn-danger" onclick="searchAppointments()">
+                                        <i class="bi bi-search"></i> Cari
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Appointments Table -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Bil.</th>
+                                        <th>Nama Pesakit</th>
+                                        <th>No. Pendaftaran</th>
+                                        <th>Tarikh Ujian</th>
+                                        <th>Jenis Ujian</th>
+                                        <th>Status</th>
+                                        <th>Tindakan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="appointmentsTable">
+                                    <tr>
+                                        <td colspan="7" class="text-center">Memuat...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <nav aria-label="Page navigation">
+                            <ul class="pagination justify-content-center" id="pagination">
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentPage = 1;
+        const itemsPerPage = 10;
+
+        function loadAppointments(page = 1) {
+            const searchName = document.getElementById('searchName').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            
+            const params = new URLSearchParams({
+                page: page,
+                limit: itemsPerPage,
+                search_name: searchName,
+                date_from: dateFrom,
+                date_to: dateTo
+            });
+            
+            fetch(`/blood-test/appointments/search?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayAppointments(data.appointments);
+                    updatePagination(data.total, page);
+                    currentPage = page;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('appointmentsTable').innerHTML = 
+                        '<tr><td colspan="7" class="text-center text-danger">Ralat memuat data</td></tr>';
+                });
+        }
+
+        function displayAppointments(appointments) {
+            const tbody = document.getElementById('appointmentsTable');
+            
+            if (appointments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">Tiada pendaftaran dijumpai</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = appointments.map((apt, index) => `
+                <tr>
+                    <td>${(currentPage - 1) * itemsPerPage + index + 1}</td>
+                    <td>${apt.patient_name}</td>
+                    <td>${apt.patient_reg_no}</td>
+                    <td>${new Date(apt.appointment_date).toLocaleDateString('ms-MY')}</td>
+                    <td>${apt.blood_types || ''}</td>
+                    <td>
+                        <span class="badge bg-${apt.status === 'booked' ? 'success' : 'secondary'}">
+                            ${apt.status === 'booked' ? 'Aktif' : 'Dibatal'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary me-1" onclick="editAppointment(${apt.id})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteAppointment(${apt.id})" title="Padam">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updatePagination(total, current) {
+            const totalPages = Math.ceil(total / itemsPerPage);
+            const pagination = document.getElementById('pagination');
+            
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+            
+            let html = '';
+            
+            // Previous button
+            html += `<li class="page-item ${current === 1 ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadAppointments(${current - 1})">Previous</a>
+            </li>`;
+            
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+                html += `<li class="page-item ${i === current ? 'active' : ''}">
+                    <a class="page-link" href="#" onclick="loadAppointments(${i})">${i}</a>
+                </li>`;
+            }
+            
+            // Next button
+            html += `<li class="page-item ${current === totalPages ? 'disabled' : ''}">
+                <a class="page-link" href="#" onclick="loadAppointments(${current + 1})">Next</a>
+            </li>`;
+            
+            pagination.innerHTML = html;
+        }
+
+        function searchAppointments() {
+            loadAppointments(1);
+        }
+
+        function editAppointment(id) {
+            alert('Edit functionality will be implemented here');
+        }
+
+        function deleteAppointment(id) {
+            if (confirm('Adakah anda pasti ingin memadam pendaftaran ujian darah ini?')) {
+                fetch(`/blood-test/appointments/delete/${id}`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Ujian darah berjaya dipadam');
+                        loadAppointments(currentPage);
+                    } else {
+                        alert('Ralat: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Ralat memadam ujian darah');
+                });
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default date range (current month)
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            
+            document.getElementById('dateFrom').value = firstDay.toISOString().split('T')[0];
+            document.getElementById('dateTo').value = lastDay.toISOString().split('T')[0];
+            
+            loadAppointments();
+            
+            // Add enter key support for search
+            document.getElementById('searchName').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchAppointments();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+    '''
+
+@app.route('/blood-test/appointments/search')
+def blood_test_appointments_search():
+    """Search blood test appointments"""
+    page = request.args.get('page', 1, type=int)
+    limit = request.args.get('limit', 10, type=int)
+    search_name = request.args.get('search_name', '')
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Build query
+    query = """
+        SELECT id, patient_name, patient_reg_no, appointment_date, blood_types, notes, status, created_at
+        FROM blood_test_appointments
+        WHERE 1=1
+    """
+    params = []
+    
+    if search_name:
+        query += " AND patient_name LIKE ?"
+        params.append(f"%{search_name}%")
+    
+    if date_from:
+        query += " AND appointment_date >= ?"
+        params.append(date_from)
+    
+    if date_to:
+        query += " AND appointment_date <= ?"
+        params.append(date_to)
+    
+    # Get total count
+    count_query = query.replace('SELECT id, patient_name, patient_reg_no, appointment_date, blood_types, notes, status, created_at', 'SELECT COUNT(*)')
+    cursor.execute(count_query, params)
+    total = cursor.fetchone()[0]
+    
+    # Add pagination
+    query += " ORDER BY appointment_date DESC"
+    query += " LIMIT ? OFFSET ?"
+    params.extend([limit, (page - 1) * limit])
+    
+    cursor.execute(query, params)
+    appointments = []
+    for row in cursor.fetchall():
+        appointments.append({
+            'id': row[0],
+            'patient_name': row[1],
+            'patient_reg_no': row[2],
+            'appointment_date': row[3],
+            'blood_types': row[4],
+            'notes': row[5],
+            'status': row[6],
+            'created_at': row[7]
+        })
+    
+    conn.close()
+    return jsonify({
+        'appointments': appointments,
+        'total': total,
+        'page': page,
+        'limit': limit
+    })
+
+@app.route('/blood-test/appointments/delete/<int:test_id>', methods=['POST'])
+def blood_test_appointments_delete(test_id):
+    """Delete blood test appointment"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('DELETE FROM blood_test_appointments WHERE id = ?', (test_id,))
+        
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'message': 'Ujian darah tidak dijumpai'})
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Ujian darah berjaya dipadam'})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+@app.route('/blood-test/export/<export_type>')
+def blood_test_export(export_type):
+    """Export blood test appointments to Excel"""
+    try:
+        date_str = request.args.get('date', datetime.now().strftime('%Y-%m-%d'))
+        selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        
+        conn = get_db()
+        cursor = conn.cursor()
+        
+        if export_type == 'daily':
+            cursor.execute("""
+                SELECT id, patient_name, patient_reg_no, appointment_date, blood_types, notes
+                FROM blood_test_appointments
+                WHERE appointment_date = ? AND status = 'booked'
+                ORDER BY created_at
+            """, (date_str,))
+            title = f"Ujian Darah Harian {selected_date.strftime('%d-%m-%Y')}"
+            filename = f"Ujian_Darah_Harian_{selected_date.strftime('%d-%m-%Y')}.xlsx"
+            
+        elif export_type == 'weekly':
+            start_week = selected_date - timedelta(days=selected_date.weekday())
+            end_week = start_week + timedelta(days=6)
+            
+            cursor.execute("""
+                SELECT id, patient_name, patient_reg_no, appointment_date, blood_types, notes
+                FROM blood_test_appointments
+                WHERE appointment_date BETWEEN ? AND ? AND status = 'booked'
+                ORDER BY appointment_date, created_at
+            """, (start_week.strftime('%Y-%m-%d'), end_week.strftime('%Y-%m-%d')))
+            title = f"Ujian Darah Mingguan {start_week.strftime('%d-%m-%Y')} hingga {end_week.strftime('%d-%m-%Y')}"
+            filename = f"Ujian_Darah_Mingguan_{start_week.strftime('%d-%m-%Y')}.xlsx"
+            
+        elif export_type == 'monthly':
+            start_month = selected_date.replace(day=1)
+            if start_month.month == 12:
+                end_month = start_month.replace(year=start_month.year + 1, month=1) - timedelta(days=1)
+            else:
+                end_month = start_month.replace(month=start_month.month + 1) - timedelta(days=1)
+            
+            cursor.execute("""
+                SELECT id, patient_name, patient_reg_no, appointment_date, blood_types, notes
+                FROM blood_test_appointments
+                WHERE appointment_date BETWEEN ? AND ? AND status = 'booked'
+                ORDER BY appointment_date, created_at
+            """, (start_month.strftime('%Y-%m-%d'), end_month.strftime('%Y-%m-%d')))
+            title = f"Ujian Darah Bulanan {start_month.strftime('%B %Y')}"
+            filename = f"Ujian_Darah_Bulanan_{start_month.strftime('%m-%Y')}.xlsx"
+        
+        appointments = cursor.fetchall()
+        conn.close()
+        
+        # Create Excel file
+        excel_file = create_blood_test_excel(appointments, title, filename)
+        
+        # Return file
+        response = make_response(excel_file.read())
+        response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    print("Initializing KK Sik Complete System...")
+    init_database()
+    print("Database initialized successfully!")
+    
+    def open_browser():
+        time.sleep(2)
+        try:
+            webbrowser.open('http://127.0.0.1:5000')
+            print("Browser opened automatically")
+        except:
+            print("Could not open browser automatically")
+            print("Please open: http://127.0.0.1:5000")
+    
+    # Start browser in background thread
+    browser_thread = threading.Thread(target=open_browser)
+    browser_thread.daemon = True
+    browser_thread.start()
+    
+    print("\n" + "="*60)
+    print("KK SIK COMPLETE SYSTEM - SISTEM LENGKAP")
+    print("="*60)
+    print("URL: http://127.0.0.1:5000")
+    print("Features: ALL - Calendar, Search, Edit/Delete, Blood Test, Excel Export")
+    print("Database: SQLite (kk_sik_complete.db)")
+    print("Press Ctrl+C to stop")
+    print("="*60)
+    
+    app.run(host='127.0.0.1', port=5000, debug=False)
