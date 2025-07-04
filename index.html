@@ -1,0 +1,3241 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KK Sik - Sistem Pengurusan Pesakit Lengkap</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        /* Custom Styles */
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        
+        .calendar-day {
+            min-height: 80px;
+            border: 1px solid #ddd;
+            padding: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .calendar-day:hover {
+            background-color: var(--bs-secondary-bg);
+        }
+        .calendar-day.today {
+            background-color: var(--bs-primary-bg-subtle);
+            border-color: var(--bs-primary);
+        }
+        .calendar-day.selected {
+            background-color: var(--bs-primary);
+            color: white;
+        }
+        .calendar-day.holiday {
+            background-color: var(--bs-danger-bg-subtle);
+            border-color: var(--bs-danger);
+            cursor: not-allowed;
+        }
+        .calendar-day.weekend {
+            background-color: #000000;
+            color: #ffffff;
+            font-weight: 500;
+            cursor: not-allowed;
+        }
+        .appointment-count {
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+        .time-slot {
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .time-slot.full {
+            background-color: #dc3545;
+            border-color: #dc3545;
+            color: #fff;
+        }
+        .time-slot.available {
+            background-color: #198754;
+            border-color: #198754;
+            color: #fff;
+        }
+        
+        .hero-section { 
+            padding: 80px 0; 
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); 
+            color: white; 
+        }
+        .feature-card { 
+            border: none; 
+            border-radius: 15px; 
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15); 
+            transition: all 0.3s ease; 
+            height: 100%;
+        }
+        .feature-card:hover { 
+            transform: translateY(-10px); 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2); 
+        }
+        .stats-card { 
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            border-radius: 15px; 
+        }
+        .feature-list { 
+            list-style: none; 
+            padding: 0; 
+        }
+        .feature-list li { 
+            padding: 8px 0; 
+            border-bottom: 1px solid #f0f0f0; 
+        }
+        .feature-list li:last-child { 
+            border-bottom: none; 
+        }
+        .feature-icon { 
+            color: #28a745; 
+            margin-right: 10px; 
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#" onclick="showPage('home')">
+                <i class="bi bi-hospital"></i> KK Sik
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="#" onclick="showPage('clinic')">Klinik</a>
+                <a class="nav-link" href="#" onclick="showPage('blood-test')">Ujian Darah</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HOME PAGE -->
+    <div id="home" class="page active">
+        <div class="hero-section text-center">
+            <div class="container">
+                <h1 class="display-3 fw-bold mb-4">
+                    <i class="bi bi-hospital-fill me-3"></i>
+                    Sistem Pengurusan KK Sik
+                </h1>
+                <p class="lead mb-4 fs-4">Sistem Temujanji dan Pengambilan Darah Lengkap</p>
+                <p class="text-light">Versi HTML Complete - All Features - 2025</p>
+            </div>
+        </div>
+        
+        <div class="container my-5">
+            
+            <!-- Main Systems -->
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="card feature-card">
+                        <div class="card-body p-4">
+                            <div class="text-center mb-4">
+                                <i class="bi bi-calendar-check text-primary" style="font-size: 4rem;"></i>
+                                <h2 class="card-title text-primary mt-3">Sistem Temujanji Klinik</h2>
+                            </div>
+                            
+
+                            
+                            <div class="text-center mt-4">
+                                <button class="btn btn-primary btn-lg px-5" onclick="showPage('clinic')">
+                                    <i class="bi bi-calendar-plus me-2"></i>Masuk Sistem Klinik
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="card feature-card">
+                        <div class="card-body p-4">
+                            <div class="text-center mb-4">
+                                <i class="bi bi-droplet text-danger" style="font-size: 4rem;"></i>
+                                <h2 class="card-title text-danger mt-3">Sistem Pengambilan Darah</h2>
+                            </div>
+                            
+
+                            
+                            <div class="text-center mt-4">
+                                <button class="btn btn-danger btn-lg px-5" onclick="showPage('blood-test')">
+                                    <i class="bi bi-droplet me-2"></i>Masuk Sistem Ujian Darah
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+
+    <!-- CLINIC PAGE -->
+    <div id="clinic" class="page">
+        <div class="container-fluid mt-4">
+            <div class="row">
+                <!-- Calendar Section -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h5><i class="bi bi-calendar3"></i> Kalendar Klinik</h5>
+                                </div>
+                                <div class="col-md-4 text-center">
+                                    <div class="d-flex align-items-center justify-content-center">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="previousMonth()">
+                                            <i class="bi bi-chevron-left"></i>
+                                        </button>
+                                        <span id="currentMonth" class="mx-3 fw-bold"></span>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="nextMonth()">
+                                            <i class="bi bi-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="d-flex gap-2">
+                                        <select class="form-select form-select-sm" id="monthSelect" onchange="changeMonth()">
+                                            <option value="0">Januari</option>
+                                            <option value="1">Februari</option>
+                                            <option value="2">Mac</option>
+                                            <option value="3">April</option>
+                                            <option value="4">Mei</option>
+                                            <option value="5">Jun</option>
+                                            <option value="6">Julai</option>
+                                            <option value="7">Ogos</option>
+                                            <option value="8">September</option>
+                                            <option value="9">Oktober</option>
+                                            <option value="10">November</option>
+                                            <option value="11">Disember</option>
+                                        </select>
+                                        <select class="form-select form-select-sm" id="yearSelect" onchange="changeYear()">
+                                            <option value="2023">2023</option>
+                                            <option value="2024">2024</option>
+                                            <option value="2025" selected>2025</option>
+                                            <option value="2026">2026</option>
+                                            <option value="2027">2027</option>
+                                            <option value="2028">2028</option>
+                                            <option value="2029">2029</option>
+                                            <option value="2030">2030</option>
+                                        </select>
+                                        <button class="btn btn-sm btn-warning" onclick="showHolidayModal()">
+                                            <i class="bi bi-calendar-x"></i> Urus Cuti
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            
+                            <!-- Calendar Grid -->
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr class="table-dark">
+                                            <th class="text-center">Ahd</th>
+                                            <th class="text-center">Isn</th>
+                                            <th class="text-center">Sel</th>
+                                            <th class="text-center">Rab</th>
+                                            <th class="text-center">Kha</th>
+                                            <th class="text-center">Jum</th>
+                                            <th class="text-center">Sab</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="calendarBody">
+                                        <!-- Calendar will be generated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Right Panel -->
+                <div class="col-md-4">
+
+                    
+                    <!-- Booking Form -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-calendar-plus"></i> Tempah Temujanji</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="appointmentForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Nama Pesakit *</label>
+                                    <input type="text" class="form-control" id="patientName" required style="text-transform: uppercase;" pattern="[A-Za-z\s]+" title="Hanya huruf dan ruang dibenarkan">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">No. Pendaftaran *</label>
+                                    <div class="input-group">
+                                        <select class="form-select" id="regType" style="max-width: 100px;">
+                                            <option value="">Pilih</option>
+                                            <option value="HPT">HPT</option>
+                                            <option value="DM">DM</option>
+                                        </select>
+                                        <input type="text" class="form-control" id="regNumber" required placeholder="Masukkan nombor">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Tarikh Temujanji *</label>
+                                    <input type="date" class="form-control" id="appointmentDate" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Masa *</label>
+                                    <select class="form-select" id="timeSlot" required>
+                                        <option value="">Pilih masa...</option>
+                                    </select>
+
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-check-lg me-2"></i>Tempah Sekarang
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Weekly and Monthly Format Display -->
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white py-2">
+                            <h6 class="mb-0"><i class="bi bi-calendar-week"></i> Format Mingguan</h6>
+                        </div>
+                        <div class="card-body p-1">
+                            <div id="weeklyFormat" style="font-size: 10px; line-height: 1.3;">
+                                <!-- Weekly format will be auto-generated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-success text-white py-2">
+                            <h6 class="mb-0"><i class="bi bi-calendar-month"></i> Format Bulanan</h6>
+                        </div>
+                        <div class="card-body p-1">
+                            <div id="monthlyFormat" style="font-size: 10px; line-height: 1.3;">
+                                <!-- Monthly format will be auto-generated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Appointments List -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6><i class="bi bi-list-ul"></i> Senarai Temujanji</h6>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <input type="text" class="form-control form-control-sm" id="searchAppointments" placeholder="Cari nama/no. daftar..." style="width: 150px;">
+                                        <button class="btn btn-sm btn-primary" onclick="performSearch()">
+                                            <i class="bi bi-search"></i> Cari
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="clearSearch()">
+                                            <i class="bi bi-arrow-clockwise"></i> Reset
+                                        </button>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                <i class="bi bi-file-earmark-excel"></i> Export Excel
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li><a class="dropdown-item" href="#" onclick="showExportModal('daily')">
+                                                    <i class="bi bi-calendar-day"></i> Harian
+                                                </a></li>
+                                                <li><a class="dropdown-item" href="#" onclick="showExportModal('monthly')">
+                                                    <i class="bi bi-calendar-month"></i> Bulanan
+                                                </a></li>
+                                                <li><a class="dropdown-item" href="#" onclick="showExportModal('yearly')">
+                                                    <i class="bi bi-calendar-year"></i> Tahunan
+                                                </a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Tarikh</th>
+                                            <th>Masa</th>
+                                            <th>Nama</th>
+                                            <th>No. Daftar</th>
+                                            <th>Jenis</th>
+                                            <th>Status</th>
+                                            <th>Tindakan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="appointmentsList">
+                                        <!-- Appointments will be displayed here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BLOOD TEST PAGE -->
+    <div id="blood-test" class="page">
+        <div class="container-fluid mt-4">
+            <div class="row">
+                <!-- Blood Test Registration -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6><i class="bi bi-droplet"></i> Daftar Ujian Darah</h6>
+                        </div>
+                        <div class="card-body">
+                            <form id="bloodTestForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Nama Pesakit *</label>
+                                    <input type="text" class="form-control" id="bloodPatientName" required style="text-transform: uppercase;" pattern="[A-Za-z\s]+" title="Hanya huruf dan ruang dibenarkan">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">No. Pendaftaran *</label>
+                                    <div class="input-group">
+                                        <select class="form-select" id="bloodRegType" style="max-width: 100px;">
+                                            <option value="">Pilih</option>
+                                            <option value="HPT">HPT</option>
+                                            <option value="DM">DM</option>
+                                        </select>
+                                        <input type="text" class="form-control" id="bloodRegNumber" required placeholder="Masukkan nombor">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Tarikh Ujian *</label>
+                                    <div style="position: relative;">
+                                        <input type="text" class="form-control" id="bloodTestDate" readonly required placeholder="dd/mm/yyyy" onclick="toggleDatePicker()">
+                                        <i class="bi bi-calendar3" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none;"></i>
+                                        
+                                        <!-- Date Picker Dropdown -->
+                                        <div id="datePicker" class="card shadow" style="position: absolute; top: 100%; left: 0; z-index: 1000; width: 280px; display: none;">
+                                            <div class="card-header p-2">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="previousPickerMonth()">
+                                                        <i class="bi bi-chevron-up"></i>
+                                                    </button>
+                                                    <span class="fw-bold" id="pickerTitle">June, 2025</span>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="nextPickerMonth()">
+                                                        <i class="bi bi-chevron-down"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="card-body p-2">
+                                                <table class="table table-sm text-center mb-0" style="font-size: 0.85em;">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="padding: 5px; font-weight: 600;">S</th>
+                                                            <th style="padding: 5px; font-weight: 600;">M</th>
+                                                            <th style="padding: 5px; font-weight: 600;">T</th>
+                                                            <th style="padding: 5px; font-weight: 600;">W</th>
+                                                            <th style="padding: 5px; font-weight: 600;">T</th>
+                                                            <th style="padding: 5px; font-weight: 600;">F</th>
+                                                            <th style="padding: 5px; font-weight: 600;">S</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="pickerCalendarBody">
+                                                        <!-- Calendar dates will be generated here -->
+                                                    </tbody>
+                                                </table>
+                                                <div class="d-flex justify-content-between mt-2">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="clearDate()">Clear</button>
+                                                    <button type="button" class="btn btn-sm btn-primary" onclick="setToday()">Today</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Jenis Ujian *</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="FBS" id="testFBS">
+                                        <label class="form-check-label" for="testFBS">FBS (Fasting Blood Sugar)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="RP" id="testRP">
+                                        <label class="form-check-label" for="testRP">RP (Renal Profile)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="LFT" id="testLFT">
+                                        <label class="form-check-label" for="testLFT">LFT (Liver Function Test)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="FLP" id="testFLP">
+                                        <label class="form-check-label" for="testFLP">FLP (Fasting Lipid Profile)</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="HbA1c" id="testHbA1c">
+                                        <label class="form-check-label" for="testHbA1c">HbA1c</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="Lain-lain" id="testOthers">
+                                        <label class="form-check-label" for="testOthers">Lain-lain</label>
+                                    </div>
+                                </div>
+                                <div class="mb-3" id="otherTestDiv" style="display: none;">
+                                    <label class="form-label">Nyatakan ujian lain</label>
+                                    <input type="text" class="form-control" id="otherTestName">
+                                </div>
+                                <button type="submit" class="btn btn-danger w-100">
+                                    <i class="bi bi-check-lg me-2"></i>Daftar Ujian
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Blood Test Calendar -->
+                <div class="col-md-8">
+                    <!-- Calendar Navigation -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <h6><i class="bi bi-calendar3"></i> Kalendar Pengambilan Darah</h6>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex gap-2 justify-content-end align-items-center">
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="previousBloodMonth()">
+                                            <i class="bi bi-chevron-left"></i>
+                                        </button>
+                                        <select class="form-select form-select-sm" id="bloodMonthSelect" onchange="changeBloodMonth()">
+                                            <option value="0">Januari</option>
+                                            <option value="1">Februari</option>
+                                            <option value="2">Mac</option>
+                                            <option value="3">April</option>
+                                            <option value="4">Mei</option>
+                                            <option value="5">Jun</option>
+                                            <option value="6">Julai</option>
+                                            <option value="7">Ogos</option>
+                                            <option value="8">September</option>
+                                            <option value="9">Oktober</option>
+                                            <option value="10">November</option>
+                                            <option value="11">Disember</option>
+                                        </select>
+                                        <select class="form-select form-select-sm" id="bloodYearSelect" onchange="changeBloodYear()">
+                                            <option value="2023">2023</option>
+                                            <option value="2024">2024</option>
+                                            <option value="2025" selected>2025</option>
+                                            <option value="2026">2026</option>
+                                            <option value="2027">2027</option>
+                                            <option value="2028">2028</option>
+                                            <option value="2029">2029</option>
+                                            <option value="2030">2030</option>
+                                        </select>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="nextBloodMonth()">
+                                            <i class="bi bi-chevron-right"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-warning" onclick="showBloodHolidayModal()">
+                                            <i class="bi bi-calendar-plus"></i> Cuti
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered text-center mb-0">
+                                    <thead>
+                                        <tr class="table-secondary">
+                                            <th>Ahd</th><th>Isn</th><th>Sel</th><th>Rab</th><th>Kha</th><th>Jum</th><th>Sab</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bloodCalendarBody">
+                                        <!-- Calendar will be generated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Weekly and Monthly Format Display for Blood Test -->
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white py-2">
+                                    <h6 class="mb-0"><i class="bi bi-calendar-week"></i> Format Mingguan</h6>
+                                </div>
+                                <div class="card-body p-1">
+                                    <div id="weeklyFormatBlood" style="font-size: 10px; line-height: 1.3;">
+                                        <!-- Weekly format will be auto-generated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header bg-success text-white py-2">
+                                    <h6 class="mb-0"><i class="bi bi-calendar-month"></i> Format Bulanan</h6>
+                                </div>
+                                <div class="card-body p-1">
+                                    <div id="monthlyFormatBlood" style="font-size: 10px; line-height: 1.3;">
+                                        <!-- Monthly format will be auto-generated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Blood Test List -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <h6><i class="bi bi-list-ul"></i> Senarai Ujian Darah</h6>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="d-flex gap-2 justify-content-end">
+                                        <input type="text" class="form-control form-control-sm" id="searchBloodTests" placeholder="Cari nama/no. daftar..." style="width: 150px;">
+                                        <button class="btn btn-sm btn-primary" onclick="performBloodSearch()">
+                                            <i class="bi bi-search"></i> Cari
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="clearBloodSearch()">
+                                            <i class="bi bi-arrow-clockwise"></i> Reset
+                                        </button>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                                <i class="bi bi-file-earmark-excel"></i> Export Excel
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li><a class="dropdown-item" href="#" onclick="showBloodExportModal('daily')">
+                                                    <i class="bi bi-calendar-day"></i> Harian
+                                                </a></li>
+                                                <li><a class="dropdown-item" href="#" onclick="showBloodExportModal('monthly')">
+                                                    <i class="bi bi-calendar-month"></i> Bulanan
+                                                </a></li>
+                                                <li><a class="dropdown-item" href="#" onclick="showBloodExportModal('yearly')">
+                                                    <i class="bi bi-calendar-year"></i> Tahunan
+                                                </a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead class="table-dark">
+                                        <tr>
+                                            <th>Tarikh</th>
+                                            <th>Nama</th>
+                                            <th>No. Daftar</th>
+                                            <th>Jenis Ujian</th>
+                                            <th>Tindakan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="bloodTestsList">
+                                        <!-- Blood tests will be displayed here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Blood Test Export Excel Modal -->
+    <div class="modal fade" id="bloodExportModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-file-earmark-excel"></i> Export Excel Ujian Darah - <span id="bloodExportType"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="bloodExportForm">
+                        <div id="bloodDailyOptions" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Pilih Tarikh *</label>
+                                <input type="date" class="form-control" id="bloodExportDate" required>
+                            </div>
+                        </div>
+                        
+                        <div id="bloodMonthlyOptions" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">Bulan *</label>
+                                    <select class="form-select" id="bloodExportMonth" required>
+                                        <option value="">Pilih Bulan</option>
+                                        <option value="0">Januari</option>
+                                        <option value="1">Februari</option>
+                                        <option value="2">Mac</option>
+                                        <option value="3">April</option>
+                                        <option value="4">Mei</option>
+                                        <option value="5">Jun</option>
+                                        <option value="6">Julai</option>
+                                        <option value="7">Ogos</option>
+                                        <option value="8">September</option>
+                                        <option value="9">Oktober</option>
+                                        <option value="10">November</option>
+                                        <option value="11">Disember</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Tahun *</label>
+                                    <select class="form-select" id="bloodExportMonthYear" required>
+                                        <option value="">Pilih Tahun</option>
+                                        <option value="2023">2023</option>
+                                        <option value="2024">2024</option>
+                                        <option value="2025">2025</option>
+                                        <option value="2026">2026</option>
+                                        <option value="2027">2027</option>
+                                        <option value="2028">2028</option>
+                                        <option value="2029">2029</option>
+                                        <option value="2030">2030</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="bloodYearlyOptions" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Pilih Tahun *</label>
+                                <select class="form-select" id="bloodExportYear" required>
+                                    <option value="">Pilih Tahun</option>
+                                    <option value="2023">2023</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2026">2026</option>
+                                    <option value="2027">2027</option>
+                                    <option value="2028">2028</option>
+                                    <option value="2029">2029</option>
+                                    <option value="2030">2030</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <small>Fail Excel akan disusun mengikut turutan tarikh untuk ujian darah.</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-success" onclick="generateBloodExcel()">
+                        <i class="bi bi-download"></i> Muat Turun Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Excel Modal -->
+    <div class="modal fade" id="exportModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-file-earmark-excel"></i> Export Excel - <span id="exportType"></span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="exportForm">
+                        <div id="dailyOptions" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Pilih Tarikh *</label>
+                                <input type="date" class="form-control" id="exportDate" required>
+                            </div>
+                        </div>
+                        
+                        <div id="monthlyOptions" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">Bulan *</label>
+                                    <select class="form-select" id="exportMonth" required>
+                                        <option value="">Pilih Bulan</option>
+                                        <option value="0">Januari</option>
+                                        <option value="1">Februari</option>
+                                        <option value="2">Mac</option>
+                                        <option value="3">April</option>
+                                        <option value="4">Mei</option>
+                                        <option value="5">Jun</option>
+                                        <option value="6">Julai</option>
+                                        <option value="7">Ogos</option>
+                                        <option value="8">September</option>
+                                        <option value="9">Oktober</option>
+                                        <option value="10">November</option>
+                                        <option value="11">Disember</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Tahun *</label>
+                                    <select class="form-select" id="exportMonthYear" required>
+                                        <option value="">Pilih Tahun</option>
+                                        <option value="2023">2023</option>
+                                        <option value="2024">2024</option>
+                                        <option value="2025">2025</option>
+                                        <option value="2026">2026</option>
+                                        <option value="2027">2027</option>
+                                        <option value="2028">2028</option>
+                                        <option value="2029">2029</option>
+                                        <option value="2030">2030</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="yearlyOptions" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Pilih Tahun *</label>
+                                <select class="form-select" id="exportYear" required>
+                                    <option value="">Pilih Tahun</option>
+                                    <option value="2023">2023</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2026">2026</option>
+                                    <option value="2027">2027</option>
+                                    <option value="2028">2028</option>
+                                    <option value="2029">2029</option>
+                                    <option value="2030">2030</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i>
+                            <small>Fail Excel akan disusun mengikut turutan tarikh dan masa.</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-success" onclick="generateExcel()">
+                        <i class="bi bi-download"></i> Muat Turun Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Holiday Management Modal -->
+    <div class="modal fade" id="holidayModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-calendar-x"></i> Urus Cuti Manual</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="holidayForm">
+                        <div class="mb-3">
+                            <label class="form-label">Tarikh Cuti *</label>
+                            <input type="date" class="form-control" id="holidayDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nama Cuti/Sebab *</label>
+                            <input type="text" class="form-control" id="holidayName" required placeholder="Contoh: Cuti Peribadi, Mesyuarat, dll" oninput="capitalizeInput(this)">
+                        </div>
+
+                    </form>
+                    
+                    <!-- Current Holidays List -->
+                    <hr>
+                    <h6>Senarai Cuti Semasa</h6>
+                    <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Tarikh</th>
+                                    <th>Nama Cuti</th>
+                                    <th>Sumber</th>
+                                    <th>Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="holidaysList">
+                                <!-- Holidays will be listed here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-warning" onclick="addHoliday()">
+                        <i class="bi bi-plus-lg"></i> Tambah Cuti
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Blood Test Holiday Management Modal -->
+    <div class="modal fade" id="bloodHolidayModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-calendar-x"></i> Urus Cuti - Pengambilan Darah</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="bloodHolidayForm">
+                        <div class="mb-3">
+                            <label class="form-label">Tarikh Cuti *</label>
+                            <input type="date" class="form-control" id="bloodHolidayDate" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nama Cuti/Sebab *</label>
+                            <input type="text" class="form-control" id="bloodHolidayName" required placeholder="Contoh: Cuti Peribadi, Mesyuarat, dll" oninput="capitalizeInput(this)">
+                        </div>
+                    </form>
+                    
+                    <!-- Current Holidays List -->
+                    <hr>
+                    <h6>Senarai Cuti Semasa</h6>
+                    <div class="table-responsive" style="max-height: 200px; overflow-y: auto;">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Tarikh</th>
+                                    <th>Nama Cuti</th>
+                                    <th>Sumber</th>
+                                    <th>Tindakan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="bloodHolidaysList">
+                                <!-- Holidays will be listed here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <button type="button" class="btn btn-warning" onclick="addBloodHoliday()">
+                        <i class="bi bi-plus-lg"></i> Tambah Cuti
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        // Global variables
+        let currentDate = new Date();
+        let currentBloodDate = new Date();
+        let currentFormDate = new Date();
+        let appointments = JSON.parse(localStorage.getItem('appointments') || '[]');
+        let bloodTests = JSON.parse(localStorage.getItem('bloodTests') || '[]');
+        let kedahHolidays = [];
+        let manualHolidays = JSON.parse(localStorage.getItem('manualHolidays') || '[]');
+        let selectedBloodDate = '';
+        let selectedClinicDate = '';
+        
+        // Page navigation
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            
+            if (pageId === 'clinic') {
+                loadKedahHolidays();
+                generateCalendar();
+                displayAppointments();
+            } else if (pageId === 'blood-test') {
+                setTimeout(() => {
+                    generateBloodCalendar();
+                    displayBloodTests();
+                    updateBloodSelectors();
+                }, 100);
+            }
+        }
+
+        // Load Kedah holidays from API
+        async function loadKedahHolidays() {
+            try {
+                console.log('Loading holidays from API...');
+                const response = await fetch('https://api.npoint.io/HSU8FhSMKAit24EkzwDVHz3XW2JWNeJq');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('API Response:', data);
+                    
+                    // Handle different possible data structures
+                    if (Array.isArray(data)) {
+                        kedahHolidays = data;
+                    } else if (data.holidays) {
+                        kedahHolidays = data.holidays;
+                    } else if (data.kedah) {
+                        kedahHolidays = data.kedah;
+                    } else if (data.data) {
+                        kedahHolidays = data.data;
+                    } else {
+                        kedahHolidays = [];
+                    }
+                    
+                    console.log('Holidays loaded from API:', kedahHolidays.length, 'entries');
+                    
+                    if (kedahHolidays.length === 0) {
+                        console.warn('No holidays found in API response');
+                        // Add warning indicator instead of alert
+                        setTimeout(() => {
+                            const calendarHeader = document.querySelector('.card-header');
+                            if (calendarHeader && !document.getElementById('apiStatus')) {
+                                const statusBadge = document.createElement('span');
+                                statusBadge.id = 'apiStatus';
+                                statusBadge.className = 'badge bg-warning ms-2';
+                                statusBadge.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Tiada Data Cuti';
+                                calendarHeader.appendChild(statusBadge);
+                            }
+                        }, 500);
+                    } else {
+                        // Add success indicator
+                        setTimeout(() => {
+                            const calendarHeader = document.querySelector('.card-header');
+                            if (calendarHeader && !document.getElementById('apiStatus')) {
+                                const statusBadge = document.createElement('span');
+                                statusBadge.id = 'apiStatus';
+                                statusBadge.className = 'badge bg-success ms-2';
+                                statusBadge.innerHTML = `<i class="bi bi-check-circle"></i> ${kedahHolidays.length} Cuti Dimuat`;
+                                calendarHeader.appendChild(statusBadge);
+                            }
+                        }, 500);
+                    }
+                } else {
+                    throw new Error(`API error: ${response.status} - ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Failed to load holidays from API:', error);
+                kedahHolidays = [];
+                
+                // Show user-friendly error message and offer retry
+                const errorMsg = error.message.includes('500') 
+                    ? 'Server API tidak dapat diakses (Error 500). Sistem akan berfungsi tanpa data cuti buat sementara.'
+                    : 'Tidak dapat memuat data cuti dari API. Sistem akan berfungsi tanpa data cuti buat sementara.';
+                    
+                console.log(errorMsg);
+                
+                // Add retry button in the calendar header
+                setTimeout(() => {
+                    const calendarHeader = document.querySelector('.card-header');
+                    if (calendarHeader && !document.getElementById('retryBtn')) {
+                        const retryBtn = document.createElement('button');
+                        retryBtn.id = 'retryBtn';
+                        retryBtn.className = 'btn btn-sm btn-warning ms-2';
+                        retryBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Muat Semula Cuti';
+                        retryBtn.onclick = async () => {
+                            retryBtn.disabled = true;
+                            retryBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Memuat...';
+                            await loadKedahHolidays();
+                            generateCalendar();
+                            if (kedahHolidays.length > 0) {
+                                retryBtn.remove();
+                            } else {
+                                retryBtn.disabled = false;
+                                retryBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Muat Semula Cuti';
+                            }
+                        };
+                        calendarHeader.appendChild(retryBtn);
+                    }
+                }, 1000);
+            }
+        }
+
+        function isHoliday(date) {
+            // Use local date format to avoid timezone issues
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
+            
+            // Check both Kedah holidays and manual holidays
+            const kedahHoliday = kedahHolidays.find(holiday => holiday.date === dateStr);
+            const manualHoliday = manualHolidays.find(holiday => holiday.date === dateStr);
+            
+            return kedahHoliday || manualHoliday;
+        }
+        
+        function getHolidayInfo(date) {
+            // Use local date format to avoid timezone issues
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
+            
+            // Check Kedah holidays first
+            const kedahHoliday = kedahHolidays.find(holiday => holiday.date === dateStr);
+            if (kedahHoliday) {
+                return kedahHoliday.name;
+            }
+            
+            // Check manual holidays
+            const manualHoliday = manualHolidays.find(holiday => holiday.date === dateStr);
+            if (manualHoliday) {
+                return manualHoliday.name;
+            }
+            
+            return null;
+        }
+
+        function generateCalendar() {
+            const calendarBody = document.getElementById('calendarBody');
+            const currentMonthElement = document.getElementById('currentMonth');
+            
+            const months = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun', 
+                           'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
+            
+            currentMonthElement.textContent = months[currentDate.getMonth()] + ' ' + currentDate.getFullYear();
+            
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            calendarBody.innerHTML = '';
+            
+            for (let week = 0; week < 6; week++) {
+                const row = document.createElement('tr');
+                
+                for (let day = 0; day < 7; day++) {
+                    const cell = document.createElement('td');
+                    const cellDate = new Date(startDate);
+                    cellDate.setDate(startDate.getDate() + (week * 7) + day);
+                    
+                    cell.className = 'calendar-day text-center p-2';
+                    // Check if it's weekend or holiday first
+                    const isWeekend = cellDate.getDay() === 5 || cellDate.getDay() === 6;
+                    const holiday = isHoliday(cellDate);
+                    
+                    if (isWeekend || holiday) {
+                        const holidayInfo = getHolidayInfo(cellDate);
+                        if (holiday && holidayInfo) {
+                            cell.innerHTML = `<div class="fw-bold">${cellDate.getDate()}</div><small class="text-warning">${holidayInfo}</small>`;
+                            cell.className += ' bg-warning text-dark';
+                            cell.style.cursor = 'not-allowed';
+                            cell.title = `Cuti: ${holidayInfo}`;
+                        } else {
+                            cell.innerHTML = `<div class="fw-bold">${cellDate.getDate()}</div>`;
+                        }
+                    } else {
+                        // Calculate total slots for this date based on day of week
+                        const dayOfWeek = cellDate.getDay();
+                        let totalSlots = 0;
+                        
+                        if (dayOfWeek >= 0 && dayOfWeek <= 3) {
+                            // Sunday to Wednesday: 6 slots (8am, 9am, 10am, 11am, 2pm, 3pm) × 10 capacity = 60
+                            totalSlots = 60;
+                        } else if (dayOfWeek === 4) {
+                            // Thursday: 4 slots (8am, 9am, 10am, 11am) × 10 capacity = 40
+                            totalSlots = 40;
+                        } else {
+                            // Friday & Saturday: weekend, no slots
+                            totalSlots = 0;
+                        }
+                        
+                        // Count booked appointments for this date
+                        const dateStr = cellDate.toISOString().split('T')[0];
+                        const bookedCount = appointments.filter(apt => apt.date === dateStr).length;
+                        
+                        cell.innerHTML = `
+                            <div class="fw-bold">${cellDate.getDate()}</div>
+                            <div class="slot-count">
+                                <small class="badge bg-success slot-badge">${bookedCount}/${totalSlots}</small>
+                            </div>
+                        `;
+                    }
+                    
+                    const today = new Date();
+                    
+                    // Today
+                    if (cellDate.toDateString() === today.toDateString()) {
+                        cell.classList.add('today');
+                    }
+                    
+                    // Weekends (Friday=5, Saturday=6)
+                    if (isWeekend) {
+                        cell.classList.add('weekend');
+                        cell.title = 'Weekend - Klinik tutup';
+                        cell.onclick = function() {
+                            alert('Klinik tutup pada hujung minggu (Jumaat & Sabtu)');
+                        };
+                    }
+                    // Holidays
+                    else if (holiday) {
+                        cell.classList.add('holiday');
+                        cell.title = `Cuti: ${holiday.name}\n${holiday.desc || ''}`;
+                        cell.style.backgroundColor = '#dc3545';
+                        cell.style.color = 'white';
+                        cell.onclick = function() {
+                            alert(`Cuti - ${holiday.name}\n${holiday.desc || ''}`);
+                        };
+                    }
+                    // Past dates
+                    else if (cellDate < today) {
+                        cell.style.backgroundColor = '#f8f9fa';
+                        cell.style.color = '#6c757d';
+                        cell.style.cursor = 'not-allowed';
+                    }
+                    // Available dates
+                    else {
+                        cell.style.cursor = 'pointer';
+                        cell.onclick = function() {
+                            selectDate(cellDate);
+                        };
+                    }
+                    
+                    // Gray out dates from other months
+                    if (cellDate.getMonth() !== currentDate.getMonth()) {
+                        cell.style.opacity = '0.3';
+                    }
+                    
+                    // Update appointment count and available slots only for working days
+                    if (!isWeekend && !holiday) {
+                        // Fix date comparison to avoid timezone issues
+                        const cellDateStr = `${cellDate.getFullYear()}-${String(cellDate.getMonth() + 1).padStart(2, '0')}-${String(cellDate.getDate()).padStart(2, '0')}`;
+                        const dayAppointments = appointments.filter(apt => 
+                            apt.date === cellDateStr
+                        );
+                        
+                        // Update the slot count in the calendar cell
+                        const bookedCount = dayAppointments.length;
+                        const slotBadge = cell.querySelector('.slot-badge');
+                        if (slotBadge) {
+                            slotBadge.textContent = `${bookedCount}/60`;
+                            
+                            if (bookedCount >= 60) {
+                                slotBadge.className = 'badge bg-danger slot-badge';
+                            } else if (bookedCount >= 50) {
+                                slotBadge.className = 'badge bg-warning slot-badge';
+                            } else {
+                                slotBadge.className = 'badge bg-success slot-badge';
+                            }
+                        }
+                    }
+                    
+                    row.appendChild(cell);
+                }
+                
+                calendarBody.appendChild(row);
+            }
+            
+
+        }
+
+        function selectDate(date) {
+            // Check if the date is a holiday or weekend - prevent selection
+            const isWeekend = date.getDay() === 5 || date.getDay() === 6;
+            const holiday = isHoliday(date);
+            
+            if (isWeekend || holiday) {
+                const holidayInfo = getHolidayInfo(date);
+                if (holiday && holidayInfo) {
+                    alert(`Tarikh ini adalah cuti: ${holidayInfo}. Tidak boleh tempah temujanji.`);
+                } else {
+                    alert('Tarikh ini adalah hujung minggu. Klinik tutup.');
+                }
+                return;
+            }
+            
+            // Remove previous selection
+            document.querySelectorAll('.calendar-day').forEach(cell => {
+                cell.classList.remove('selected');
+            });
+            
+            // Highlight selected date
+            event.target.closest('.calendar-day').classList.add('selected');
+            
+            // Fix timezone issue - use local date format
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const formattedDate = `${year}-${month}-${day}`;
+            
+            // Update date input
+            document.getElementById('appointmentDate').value = formattedDate;
+            
+            // Store selected date for holiday modal auto-fill
+            selectedClinicDate = formattedDate;
+            
+            // Update time slots for the selected date
+            updateTimeSlots();
+            
+            // Filter appointments for selected date
+            filterAppointmentsByDate(formattedDate);
+            
+            console.log('Date selected from calendar:', formattedDate);
+        }
+
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            updateSelectors();
+            generateCalendar();
+        }
+
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            updateSelectors();
+            generateCalendar();
+        }
+
+        function changeMonth() {
+            const monthSelect = document.getElementById('monthSelect');
+            currentDate.setMonth(parseInt(monthSelect.value));
+            generateCalendar();
+        }
+
+        function changeYear() {
+            const yearSelect = document.getElementById('yearSelect');
+            currentDate.setFullYear(parseInt(yearSelect.value));
+            generateCalendar();
+        }
+
+        function updateSelectors() {
+            document.getElementById('monthSelect').value = currentDate.getMonth();
+            document.getElementById('yearSelect').value = currentDate.getFullYear();
+        }
+
+        function formatDateDisplay(dateStr) {
+            // Convert YYYY-M-D to DD-M-YYYY
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const year = parts[0];
+                const month = parts[1];
+                const day = parts[2];
+                return `${day}-${month}-${year}`;
+            }
+            return dateStr; // Return original if format is unexpected
+        }
+
+
+
+
+
+        function displayAppointments(filteredDate = null) {
+            const tbody = document.getElementById('appointmentsList');
+            tbody.innerHTML = '';
+            
+            let appointmentsToShow = appointments;
+            
+            // Filter by date if specified
+            if (filteredDate) {
+                appointmentsToShow = appointments.filter(apt => apt.date === filteredDate);
+            }
+            
+            appointmentsToShow.forEach((apt, index) => {
+                const originalIndex = appointments.indexOf(apt);
+                const timeDisplay = apt.timeDisplay || apt.timeSlot;
+                const dateFormatted = formatDateDisplay(apt.date);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${dateFormatted}</td>
+                    <td>${timeDisplay}</td>
+                    <td>${apt.patientName}</td>
+                    <td>${apt.regNumber}</td>
+                    <td>Konsultasi</td>
+                    <td><span class="badge bg-success">Aktif</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editAppointment(${originalIndex})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAppointment(${originalIndex})" title="Padam">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // Show message if no appointments found
+            if (appointmentsToShow.length === 0) {
+                const row = document.createElement('tr');
+                const filteredDateFormatted = filteredDate ? formatDateDisplay(filteredDate) : null;
+                row.innerHTML = `
+                    <td colspan="7" class="text-center text-muted py-4">
+                        ${filteredDateFormatted ? `Tiada temujanji pada ${filteredDateFormatted}` : 'Tiada temujanji didaftarkan'}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+
+        function displayBloodTests(testsToShow = bloodTests) {
+            const tbody = document.getElementById('bloodTestsList');
+            tbody.innerHTML = '';
+            
+            if (testsToShow.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-3">
+                            Tiada ujian darah dijumpai
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            testsToShow.forEach((test, index) => {
+                const originalIndex = bloodTests.indexOf(test);
+                const dateFormatted = formatDateDisplay(test.date);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${dateFormatted}</td>
+                    <td>${test.patientName}</td>
+                    <td>${test.regNumber}</td>
+                    <td>${test.testTypes.join(', ')}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteBloodTest(${originalIndex})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            // Update blood test stats
+            updateBloodStats();
+        }
+
+        // Filter appointments by selected date
+        function filterAppointmentsByDate(selectedDate) {
+            displayAppointments(selectedDate);
+            
+            // Update header to show filtered date with formatted display
+            const appointmentsCard = document.querySelector('#appointmentsList').closest('.card');
+            const cardHeader = appointmentsCard.querySelector('.card-header h6');
+            const selectedDateFormatted = formatDateDisplay(selectedDate);
+            cardHeader.innerHTML = `<i class="bi bi-list-ul"></i> Senarai Temujanji - ${selectedDateFormatted}`;
+            
+            // Add button to show all appointments
+            if (!document.getElementById('showAllBtn')) {
+                const showAllBtn = document.createElement('button');
+                showAllBtn.id = 'showAllBtn';
+                showAllBtn.className = 'btn btn-sm btn-outline-secondary ms-2';
+                showAllBtn.innerHTML = '<i class="bi bi-list"></i> Tunjuk Semua';
+                showAllBtn.onclick = function() {
+                    displayAppointments();
+                    cardHeader.innerHTML = `<i class="bi bi-list-ul"></i> Senarai Temujanji`;
+                    this.remove();
+                };
+                cardHeader.appendChild(showAllBtn);
+            }
+        }
+
+        // Edit appointment function
+        function editAppointment(index) {
+            const apt = appointments[index];
+            
+            // Populate form with existing data
+            document.getElementById('patientName').value = apt.patientName;
+            
+            // Handle registration number format
+            if (apt.regNumber.includes('HPT ') || apt.regNumber.includes('DM ')) {
+                const parts = apt.regNumber.split(' ');
+                document.getElementById('regType').value = parts[0];
+                document.getElementById('regNumber').value = parts[1];
+            } else {
+                document.getElementById('regType').value = '';
+                document.getElementById('regNumber').value = apt.regNumber;
+            }
+            
+            document.getElementById('appointmentDate').value = apt.date;
+            
+            // Update time slots and select the current one
+            updateTimeSlots();
+            setTimeout(() => {
+                document.getElementById('timeSlot').value = apt.timeSlot;
+            }, 100);
+            
+            // Remove the original appointment
+            appointments.splice(index, 1);
+            localStorage.setItem('appointments', JSON.stringify(appointments));
+            
+            // Update displays
+            displayAppointments();
+            generateCalendar();
+            updateTimeSlots();
+            
+            // Show success message
+            alert('Data temujanji telah dimuatkan ke borang untuk edit. Sila kemaskini dan tempah semula.');
+        }
+
+        function deleteAppointment(index) {
+            if (confirm('Adakah anda pasti ingin memadamkan temujanji ini?')) {
+                appointments.splice(index, 1);
+                localStorage.setItem('appointments', JSON.stringify(appointments));
+                displayAppointments();
+                generateCalendar();
+                updateTimeSlots(); // Refresh time slots to show updated availability
+            }
+        }
+
+        function deleteBloodTest(index) {
+            if (confirm('Adakah anda pasti ingin memadamkan ujian darah ini?')) {
+                bloodTests.splice(index, 1);
+                localStorage.setItem('bloodTests', JSON.stringify(bloodTests));
+                displayBloodTests();
+            }
+        }
+
+        // Registration number formatting for clinic
+        function formatRegistrationNumber() {
+            const regType = document.getElementById('regType').value;
+            const regNumber = document.getElementById('regNumber');
+            
+            // Remove existing event listeners by cloning the element
+            const newRegNumber = regNumber.cloneNode(true);
+            regNumber.parentNode.replaceChild(newRegNumber, regNumber);
+            
+            if (regType === 'HPT' || regType === 'DM') {
+                // HPT/DM format: only 4 digits
+                newRegNumber.setAttribute('maxlength', '4');
+                newRegNumber.setAttribute('pattern', '[0-9]{4}');
+                newRegNumber.setAttribute('placeholder', '1234');
+                newRegNumber.addEventListener('input', function(e) {
+                    this.value = this.value.replace(/[^0-9]/g, '');
+                    if (this.value.length > 4) {
+                        this.value = this.value.slice(0, 4);
+                    }
+                });
+            } else {
+                // Regular format: 6 digits with dash after 2 digits (02-1212)
+                newRegNumber.setAttribute('maxlength', '7');
+                newRegNumber.setAttribute('pattern', '[0-9]{2}-[0-9]{4}');
+                newRegNumber.setAttribute('placeholder', '02-1212');
+                newRegNumber.addEventListener('input', function(e) {
+                    let value = this.value.replace(/[^0-9]/g, '');
+                    if (value.length > 2) {
+                        value = value.slice(0, 2) + '-' + value.slice(2, 6);
+                    }
+                    this.value = value;
+                });
+            }
+        }
+
+        // Registration number formatting for blood test
+        function formatBloodRegistrationNumber() {
+            const regType = document.getElementById('bloodRegType').value;
+            const regNumber = document.getElementById('bloodRegNumber');
+            
+            // Remove existing event listeners by cloning the element
+            const newRegNumber = regNumber.cloneNode(true);
+            regNumber.parentNode.replaceChild(newRegNumber, regNumber);
+            
+            if (regType === 'HPT' || regType === 'DM') {
+                // HPT/DM format: only 4 digits
+                newRegNumber.setAttribute('maxlength', '4');
+                newRegNumber.setAttribute('pattern', '[0-9]{4}');
+                newRegNumber.setAttribute('placeholder', '1234');
+                newRegNumber.addEventListener('input', function(e) {
+                    this.value = this.value.replace(/[^0-9]/g, '');
+                    if (this.value.length > 4) {
+                        this.value = this.value.slice(0, 4);
+                    }
+                });
+            } else {
+                // Regular format: 6 digits with dash after 2 digits (02-1212)
+                newRegNumber.setAttribute('maxlength', '7');
+                newRegNumber.setAttribute('pattern', '[0-9]{2}-[0-9]{4}');
+                newRegNumber.setAttribute('placeholder', '02-1212');
+                newRegNumber.addEventListener('input', function(e) {
+                    let value = this.value.replace(/[^0-9]/g, '');
+                    if (value.length > 2) {
+                        value = value.slice(0, 2) + '-' + value.slice(2, 6);
+                    }
+                    this.value = value;
+                });
+            }
+        }
+
+        // Handle registration type change for clinic
+        document.getElementById('regType').addEventListener('change', function() {
+            document.getElementById('regNumber').value = '';
+            formatRegistrationNumber();
+        });
+
+        // Handle registration type change for blood test
+        document.getElementById('bloodRegType').addEventListener('change', function() {
+            document.getElementById('bloodRegNumber').value = '';
+            formatBloodRegistrationNumber();
+        });
+
+        // Update time slots based on selected date
+        function updateTimeSlots() {
+            console.log('updateTimeSlots called');
+            const selectedDate = document.getElementById('appointmentDate').value;
+            const timeSlotSelect = document.getElementById('timeSlot');
+            
+            console.log('Selected date:', selectedDate);
+            console.log('Time slot select element:', timeSlotSelect);
+            
+            if (!selectedDate) {
+                timeSlotSelect.innerHTML = '<option value="">Pilih masa...</option>';
+                console.log('No date selected, showing default option');
+                return;
+            }
+            
+            const date = new Date(selectedDate);
+            const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+            console.log('Day of week:', dayOfWeek);
+            
+            let timeSlots = [];
+            
+            // Sunday (0) to Wednesday (3): 8am-11am, 2pm-3pm
+            if (dayOfWeek >= 0 && dayOfWeek <= 3) {
+                timeSlots = [
+                    '08:00', '09:00', '10:00', '11:00', '14:00', '15:00'
+                ];
+            }
+            // Thursday (4): 8am-11am only
+            else if (dayOfWeek === 4) {
+                timeSlots = [
+                    '08:00', '09:00', '10:00', '11:00'
+                ];
+            }
+            // Friday (5) and Saturday (6): No slots (weekend)
+            else {
+                timeSlots = [];
+            }
+            
+            console.log('Available time slots:', timeSlots);
+            
+            // Clear existing options
+            timeSlotSelect.innerHTML = '<option value="">Pilih masa...</option>';
+            
+            if (timeSlots.length === 0) {
+                const noSlotOption = document.createElement('option');
+                noSlotOption.disabled = true;
+                noSlotOption.textContent = 'Tiada slot tersedia untuk hari ini';
+                timeSlotSelect.appendChild(noSlotOption);
+                console.log('No slots available for this day');
+                return;
+            }
+            
+            // Add time slots with availability count
+            timeSlots.forEach(time => {
+                const bookedCount = getBookedCountForTimeSlot(selectedDate, time);
+                const availableSlots = 10 - bookedCount;
+                let timeDisplay;
+                
+                if (time === '14:00') {
+                    timeDisplay = '2:00pm';
+                } else if (time === '15:00') {
+                    timeDisplay = '3:00pm';
+                } else {
+                    timeDisplay = time.replace(':00', ':00am');
+                }
+                
+                const option = document.createElement('option');
+                option.value = time;
+                option.textContent = `${timeDisplay} (${availableSlots}/10 slot)`;
+                
+                if (availableSlots === 0) {
+                    option.disabled = true;
+                    option.textContent += ' - PENUH';
+                }
+                
+                timeSlotSelect.appendChild(option);
+                console.log('Added time slot:', timeDisplay, 'Available:', availableSlots);
+            });
+        }
+        
+        // Get booked count for specific time slot
+        function getBookedCountForTimeSlot(date, time) {
+            return appointments.filter(apt => 
+                apt.date === date && apt.timeSlot === time
+            ).length;
+        }
+        
+        // Handle date change
+        document.getElementById('appointmentDate').addEventListener('change', updateTimeSlots);
+
+        // Name validation - only letters and spaces allowed
+        function validateNameInput(inputElement) {
+            inputElement.addEventListener('input', function(e) {
+                // Remove any characters that are not letters or spaces
+                this.value = this.value.replace(/[^A-Za-z\s]/g, '');
+            });
+            
+            inputElement.addEventListener('keypress', function(e) {
+                // Prevent typing of non-letter characters
+                const char = String.fromCharCode(e.which);
+                if (!/[A-Za-z\s]/.test(char)) {
+                    e.preventDefault();
+                }
+            });
+        }
+
+        // Apply name validation to both forms
+        validateNameInput(document.getElementById('patientName'));
+        validateNameInput(document.getElementById('bloodPatientName'));
+
+        // Capitalize input function for holiday names
+        function capitalizeInput(input) {
+            const cursorPosition = input.selectionStart;
+            const value = input.value;
+            
+            // Capitalize first letter of each word
+            const capitalizedValue = value.toLowerCase().replace(/\b\w/g, function(char) {
+                return char.toUpperCase();
+            });
+            
+            input.value = capitalizedValue;
+            
+            // Restore cursor position
+            input.setSelectionRange(cursorPosition, cursorPosition);
+        }
+
+        // Form submissions
+        document.getElementById('appointmentForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const regType = document.getElementById('regType').value;
+            const regNumber = document.getElementById('regNumber').value;
+            let fullRegNumber = regNumber;
+            
+            // Format full registration number
+            if (regType === 'HPT' || regType === 'DM') {
+                if (regNumber.length !== 4) {
+                    alert('No. pendaftaran HPT/DM mesti 4 digit sahaja');
+                    return;
+                }
+                fullRegNumber = regType + ' ' + regNumber;
+            } else {
+                if (!/^[0-9]{2}-[0-9]{4}$/.test(regNumber)) {
+                    alert('No. pendaftaran mesti dalam format 02-1212');
+                    return;
+                }
+            }
+            
+            const selectedDate = document.getElementById('appointmentDate').value;
+            const selectedTime = document.getElementById('timeSlot').value;
+            
+            // Validate time slot availability
+            const bookedCount = getBookedCountForTimeSlot(selectedDate, selectedTime);
+            if (bookedCount >= 10) {
+                alert('Slot masa ini sudah penuh. Sila pilih masa lain.');
+                return;
+            }
+            
+            // Format time display for storage
+            const timeDisplay = selectedTime.includes('14:') ? '2:00pm' : 
+                               selectedTime.includes('15:') ? '3:00pm' : 
+                               selectedTime + 'am';
+            
+            const appointment = {
+                date: selectedDate,
+                timeSlot: selectedTime,
+                timeDisplay: timeDisplay,
+                patientName: document.getElementById('patientName').value.toUpperCase(),
+                regNumber: fullRegNumber,
+                type: 'Konsultasi',
+                created: new Date().toISOString()
+            };
+            
+            appointments.push(appointment);
+            localStorage.setItem('appointments', JSON.stringify(appointments));
+            
+            alert('Temujanji berjaya ditempah!');
+            this.reset();
+            updateTimeSlots(); // Refresh time slots to show updated availability
+            displayAppointments();
+            generateCalendar();
+        });
+
+        document.getElementById('bloodTestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Check if date is selected from calendar
+            if (!selectedBloodDate) {
+                alert('Sila pilih tarikh dari kalendar');
+                return;
+            }
+            
+            const testTypes = Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+            
+            if (testTypes.length === 0) {
+                alert('Sila pilih sekurang-kurangnya satu jenis ujian');
+                return;
+            }
+            
+            if (testTypes.includes('Lain-lain') && !document.getElementById('otherTestName').value) {
+                alert('Sila nyatakan ujian lain');
+                return;
+            }
+            
+            const bloodRegType = document.getElementById('bloodRegType').value;
+            const bloodRegNumber = document.getElementById('bloodRegNumber').value;
+            let fullBloodRegNumber = bloodRegNumber;
+            
+            // Format full registration number for blood test
+            if (bloodRegType === 'HPT' || bloodRegType === 'DM') {
+                if (bloodRegNumber.length !== 4) {
+                    alert('No. pendaftaran HPT/DM mesti 4 digit sahaja');
+                    return;
+                }
+                fullBloodRegNumber = bloodRegType + ' ' + bloodRegNumber;
+            } else {
+                if (!/^[0-9]{2}-[0-9]{4}$/.test(bloodRegNumber)) {
+                    alert('No. pendaftaran mesti dalam format 02-1212');
+                    return;
+                }
+            }
+            
+            const bloodTest = {
+                date: selectedBloodDate, // Use the selected date from calendar
+                patientName: document.getElementById('bloodPatientName').value.toUpperCase(),
+                regNumber: fullBloodRegNumber,
+                testTypes: testTypes,
+                otherTest: document.getElementById('otherTestName').value,
+                created: new Date().toISOString()
+            };
+            
+            bloodTests.push(bloodTest);
+            localStorage.setItem('bloodTests', JSON.stringify(bloodTests));
+            
+            alert('Ujian darah berjaya didaftarkan!');
+            this.reset();
+            document.getElementById('otherTestDiv').style.display = 'none';
+            document.getElementById('bloodTestDate').value = '';
+            selectedBloodDate = '';
+            displayBloodTests();
+            generateBloodCalendar();
+        });
+
+        // Show/hide other test input
+        document.getElementById('testOthers').addEventListener('change', function() {
+            document.getElementById('otherTestDiv').style.display = this.checked ? 'block' : 'none';
+        });
+
+        // Search functionality for appointments
+        function performSearch() {
+            const searchInput = document.getElementById('searchAppointments');
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            
+            console.log('Performing search for:', searchTerm);
+            console.log('Total appointments:', appointments.length);
+            
+            if (searchTerm === '') {
+                alert('Sila masukkan nama atau no. pendaftaran untuk carian');
+                return;
+            }
+            
+            // Filter appointments based on search term - exact matches only
+            const filteredAppointments = appointments.filter(apt => {
+                const nameExactMatch = apt.patientName.toLowerCase() === searchTerm;
+                const regExactMatch = apt.regNumber.toLowerCase() === searchTerm;
+                
+                console.log(`Checking: ${apt.patientName} (${apt.regNumber}) - Name exact: ${nameExactMatch}, Reg exact: ${regExactMatch}`);
+                
+                return nameExactMatch || regExactMatch;
+            });
+            
+            console.log('Filtered appointments:', filteredAppointments.length);
+            
+            // Display filtered appointments
+            displayFilteredAppointments(filteredAppointments, searchInput.value);
+        }
+        
+        function clearSearch() {
+            document.getElementById('searchAppointments').value = '';
+            displayAppointments();
+            
+            // Reset header
+            const appointmentsCard = document.querySelector('#appointmentsList').closest('.card');
+            const cardHeader = appointmentsCard.querySelector('.card-header h6');
+            cardHeader.innerHTML = `<i class="bi bi-list-ul"></i> Senarai Temujanji`;
+            
+            // Remove show all button if exists
+            const showAllBtn = document.getElementById('showAllBtn');
+            if (showAllBtn) {
+                showAllBtn.remove();
+            }
+        }
+        
+        function displayFilteredAppointments(filteredAppointments, searchTerm) {
+            const tbody = document.getElementById('appointmentsList');
+            tbody.innerHTML = '';
+            
+            // Update header to show search result
+            const appointmentsCard = document.querySelector('#appointmentsList').closest('.card');
+            const cardHeader = appointmentsCard.querySelector('.card-header h6');
+            cardHeader.innerHTML = `<i class="bi bi-search"></i> Hasil Carian: "${searchTerm}" (${filteredAppointments.length} dijumpai)`;
+            
+            if (filteredAppointments.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="7" class="text-center text-muted py-4">
+                        <i class="bi bi-search"></i><br>
+                        Tiada temujanji dijumpai untuk "<strong>${searchTerm}</strong>"<br>
+                        <small class="text-muted">Cuba cari dengan nama penuh atau no. pendaftaran yang tepat</small>
+                    </td>
+                `;
+                tbody.appendChild(row);
+                return;
+            }
+            
+            // Sort by date (newest first)
+            filteredAppointments.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            filteredAppointments.forEach((apt) => {
+                const originalIndex = appointments.indexOf(apt);
+                const timeDisplay = apt.timeDisplay || apt.timeSlot;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${apt.date}</td>
+                    <td>${timeDisplay}</td>
+                    <td><strong>${apt.patientName}</strong></td>
+                    <td><strong>${apt.regNumber}</strong></td>
+                    <td>Konsultasi</td>
+                    <td><span class="badge bg-success">Aktif</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editAppointment(${originalIndex})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAppointment(${originalIndex})" title="Padam">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Allow search on Enter key press
+        document.getElementById('searchAppointments').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+
+        // Holiday management functions
+        function showHolidayModal() {
+            const modal = new bootstrap.Modal(document.getElementById('holidayModal'));
+            
+            // Auto-fill date if a date is selected from calendar
+            if (selectedClinicDate) {
+                document.getElementById('holidayDate').value = selectedClinicDate;
+            } else {
+                const selectedDateInput = document.getElementById('appointmentDate');
+                if (selectedDateInput && selectedDateInput.value) {
+                    document.getElementById('holidayDate').value = selectedDateInput.value;
+                }
+            }
+            
+            loadHolidaysList();
+            modal.show();
+        }
+
+        function addHoliday() {
+            const holidayDate = document.getElementById('holidayDate').value;
+            const holidayName = document.getElementById('holidayName').value;
+
+            if (!holidayDate || !holidayName) {
+                alert('Sila isi tarikh dan nama cuti');
+                return;
+            }
+
+            // Check if holiday already exists
+            const existingHoliday = manualHolidays.find(h => h.date === holidayDate);
+            if (existingHoliday) {
+                alert('Cuti untuk tarikh ini sudah wujud');
+                return;
+            }
+
+            // Add new holiday
+            const newHoliday = {
+                date: holidayDate,
+                name: holidayName,
+                type: 'manual',
+                created: new Date().toISOString()
+            };
+
+            manualHolidays.push(newHoliday);
+            localStorage.setItem('manualHolidays', JSON.stringify(manualHolidays));
+
+            // Clear form
+            document.getElementById('holidayForm').reset();
+
+            // Refresh calendar and holidays list
+            generateCalendar();
+            loadHolidaysList();
+
+            alert('Cuti berjaya ditambah');
+        }
+
+        function deleteHoliday(index) {
+            if (confirm('Adakah anda pasti ingin memadamkan cuti ini?')) {
+                manualHolidays.splice(index, 1);
+                localStorage.setItem('manualHolidays', JSON.stringify(manualHolidays));
+                generateCalendar();
+                loadHolidaysList();
+            }
+        }
+
+        function loadHolidaysList() {
+            const tbody = document.getElementById('holidaysList');
+            tbody.innerHTML = '';
+
+            // Combine and sort all holidays
+            const allHolidays = [
+                ...kedahHolidays.map(h => ({...h, source: 'API'})),
+                ...manualHolidays.map(h => ({...h, source: 'Manual'}))
+            ].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            allHolidays.forEach((holiday, index) => {
+                const row = document.createElement('tr');
+                const originalIndex = holiday.source === 'Manual' ? 
+                    manualHolidays.findIndex(h => h.date === holiday.date) : -1;
+                
+                row.innerHTML = `
+                    <td>${holiday.date}</td>
+                    <td>${holiday.name}</td>
+                    <td>
+                        <span class="badge ${holiday.source === 'API' ? 'bg-info' : 'bg-warning'}">
+                            ${holiday.source}
+                        </span>
+                    </td>
+                    <td>
+                        ${holiday.source === 'Manual' ? 
+                            `<button class="btn btn-sm btn-outline-danger" onclick="deleteHoliday(${originalIndex})">
+                                <i class="bi bi-trash"></i>
+                            </button>` : 
+                            '<small class="text-muted">Tidak boleh padam</small>'
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            if (allHolidays.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="4" class="text-center text-muted py-3">
+                        Tiada cuti didaftarkan
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+
+        // Blood Test Holiday management functions (shares data with clinic system)
+        function showBloodHolidayModal() {
+            const modal = new bootstrap.Modal(document.getElementById('bloodHolidayModal'));
+            
+            // Auto-fill date if a date is selected from blood test calendar
+            if (selectedBloodDate) {
+                document.getElementById('bloodHolidayDate').value = selectedBloodDate;
+            }
+            
+            loadBloodHolidaysList();
+            modal.show();
+        }
+
+        function addBloodHoliday() {
+            const holidayDate = document.getElementById('bloodHolidayDate').value;
+            const holidayName = document.getElementById('bloodHolidayName').value;
+
+            if (!holidayDate || !holidayName) {
+                alert('Sila isi tarikh dan nama cuti');
+                return;
+            }
+
+            // Check if holiday already exists
+            const existingHoliday = manualHolidays.find(h => h.date === holidayDate);
+            if (existingHoliday) {
+                alert('Cuti untuk tarikh ini sudah wujud');
+                return;
+            }
+
+            // Add new holiday (shares the same storage as clinic system)
+            const newHoliday = {
+                date: holidayDate,
+                name: holidayName,
+                type: 'manual',
+                created: new Date().toISOString()
+            };
+
+            manualHolidays.push(newHoliday);
+            localStorage.setItem('manualHolidays', JSON.stringify(manualHolidays));
+
+            // Clear form
+            document.getElementById('bloodHolidayForm').reset();
+
+            // Refresh both calendars and holidays lists
+            generateBloodCalendar();
+            if (typeof generateCalendar === 'function') {
+                generateCalendar(); // Also refresh clinic calendar if it exists
+            }
+            loadBloodHolidaysList();
+            
+            // Also refresh clinic holidays list if it exists
+            if (typeof loadHolidaysList === 'function') {
+                loadHolidaysList();
+            }
+
+            alert('Cuti berjaya ditambah dan akan dipaparkan di kedua-dua sistem');
+        }
+
+        function deleteBloodHoliday(index) {
+            if (confirm('Adakah anda pasti ingin memadamkan cuti ini? Cuti akan dipadamkan dari kedua-dua sistem.')) {
+                manualHolidays.splice(index, 1);
+                localStorage.setItem('manualHolidays', JSON.stringify(manualHolidays));
+                
+                // Refresh both calendars
+                generateBloodCalendar();
+                if (typeof generateCalendar === 'function') {
+                    generateCalendar(); // Also refresh clinic calendar if it exists
+                }
+                loadBloodHolidaysList();
+                
+                // Also refresh clinic holidays list if it exists
+                if (typeof loadHolidaysList === 'function') {
+                    loadHolidaysList();
+                }
+            }
+        }
+
+        function loadBloodHolidaysList() {
+            const tbody = document.getElementById('bloodHolidaysList');
+            tbody.innerHTML = '';
+
+            // Combine and sort all holidays (same as clinic system)
+            const allHolidays = [
+                ...kedahHolidays.map(h => ({...h, source: 'API'})),
+                ...manualHolidays.map(h => ({...h, source: 'Manual'}))
+            ].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            allHolidays.forEach((holiday, index) => {
+                const row = document.createElement('tr');
+                const originalIndex = holiday.source === 'Manual' ? 
+                    manualHolidays.findIndex(h => h.date === holiday.date) : -1;
+                
+                row.innerHTML = `
+                    <td>${holiday.date}</td>
+                    <td>${holiday.name}</td>
+                    <td>
+                        <span class="badge ${holiday.source === 'API' ? 'bg-info' : 'bg-warning'}">
+                            ${holiday.source}
+                        </span>
+                    </td>
+                    <td>
+                        ${holiday.source === 'Manual' ? 
+                            `<button class="btn btn-sm btn-outline-danger" onclick="deleteBloodHoliday(${originalIndex})">
+                                <i class="bi bi-trash"></i>
+                            </button>` : 
+                            '<small class="text-muted">Tidak boleh padam</small>'
+                        }
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            if (allHolidays.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="4" class="text-center text-muted py-3">
+                        Tiada cuti didaftarkan
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+
+        // Export Excel functions
+        let currentExportType = '';
+
+        function showExportModal(type) {
+            currentExportType = type;
+            
+            // Hide all option divs
+            document.getElementById('dailyOptions').style.display = 'none';
+            document.getElementById('monthlyOptions').style.display = 'none';
+            document.getElementById('yearlyOptions').style.display = 'none';
+            
+            // Show appropriate options and set title
+            const exportTypeSpan = document.getElementById('exportType');
+            const today = new Date();
+            
+            switch(type) {
+                case 'daily':
+                    document.getElementById('dailyOptions').style.display = 'block';
+                    exportTypeSpan.textContent = 'Harian';
+                    // Set today as default
+                    const todayStr = today.toISOString().split('T')[0];
+                    document.getElementById('exportDate').value = todayStr;
+                    break;
+                case 'monthly':
+                    document.getElementById('monthlyOptions').style.display = 'block';
+                    exportTypeSpan.textContent = 'Bulanan';
+                    // Set current month/year as default
+                    document.getElementById('exportMonth').value = today.getMonth();
+                    document.getElementById('exportMonthYear').value = today.getFullYear();
+                    break;
+                case 'yearly':
+                    document.getElementById('yearlyOptions').style.display = 'block';
+                    exportTypeSpan.textContent = 'Tahunan';
+                    // Set current year as default
+                    document.getElementById('exportYear').value = today.getFullYear();
+                    break;
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+            modal.show();
+        }
+
+        function generateExcel() {
+            let filteredAppointments = [];
+            let fileName = '';
+            let dateRange = '';
+
+            // Filter appointments based on export type
+            switch(currentExportType) {
+                case 'daily':
+                    const selectedDate = document.getElementById('exportDate').value;
+                    if (!selectedDate) {
+                        alert('Sila pilih tarikh');
+                        return;
+                    }
+                    filteredAppointments = appointments.filter(apt => apt.date === selectedDate);
+                    fileName = `Temujanji_Harian_${selectedDate}.xlsx`;
+                    dateRange = selectedDate;
+                    break;
+                    
+                case 'monthly':
+                    const selectedMonth = document.getElementById('exportMonth').value;
+                    const selectedMonthYear = document.getElementById('exportMonthYear').value;
+                    if (!selectedMonth || !selectedMonthYear) {
+                        alert('Sila pilih bulan dan tahun');
+                        return;
+                    }
+                    
+                    const monthNames = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
+                                      'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
+                    
+                    filteredAppointments = appointments.filter(apt => {
+                        const aptDate = new Date(apt.date);
+                        return aptDate.getMonth() == selectedMonth && aptDate.getFullYear() == selectedMonthYear;
+                    });
+                    fileName = `Temujanji_${monthNames[selectedMonth]}_${selectedMonthYear}.xlsx`;
+                    dateRange = `${monthNames[selectedMonth]} ${selectedMonthYear}`;
+                    break;
+                    
+                case 'yearly':
+                    const selectedYear = document.getElementById('exportYear').value;
+                    if (!selectedYear) {
+                        alert('Sila pilih tahun');
+                        return;
+                    }
+                    filteredAppointments = appointments.filter(apt => {
+                        const aptDate = new Date(apt.date);
+                        return aptDate.getFullYear() == selectedYear;
+                    });
+                    fileName = `Temujanji_Tahunan_${selectedYear}.xlsx`;
+                    dateRange = `Tahun ${selectedYear}`;
+                    break;
+            }
+
+            if (filteredAppointments.length === 0) {
+                alert(`Tiada temujanji dijumpai untuk ${dateRange}`);
+                return;
+            }
+
+            // Sort appointments by date and time
+            filteredAppointments.sort((a, b) => {
+                const dateCompare = new Date(a.date) - new Date(b.date);
+                if (dateCompare !== 0) return dateCompare;
+                
+                // Compare time slots
+                const timeA = a.timeSlot || '08:00';
+                const timeB = b.timeSlot || '08:00';
+                return timeA.localeCompare(timeB);
+            });
+
+            // Create Excel data
+            const excelData = [
+                ['LAPORAN TEMUJANJI KLINIK KK SIK'],
+                [`Tempoh: ${dateRange}`],
+                [`Tarikh Laporan: ${new Date().toLocaleDateString('ms-MY')}`],
+                [`Jumlah Temujanji: ${filteredAppointments.length}`],
+                [], // Empty row
+                ['BIL', 'TARIKH', 'MASA', 'NAMA PESAKIT', 'NO. PENDAFTARAN', 'JENIS', 'STATUS']
+            ];
+
+            // Add appointment data
+            filteredAppointments.forEach((apt, index) => {
+                const timeDisplay = apt.timeDisplay || apt.timeSlot;
+                excelData.push([
+                    index + 1,
+                    apt.date,
+                    timeDisplay,
+                    apt.patientName,
+                    apt.regNumber,
+                    'Konsultasi',
+                    'Aktif'
+                ]);
+            });
+
+            // Create workbook and worksheet
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+            // Set column widths
+            ws['!cols'] = [
+                {wch: 5},   // BIL
+                {wch: 12},  // TARIKH
+                {wch: 10},  // MASA
+                {wch: 25},  // NAMA PESAKIT
+                {wch: 18},  // NO. PENDAFTARAN
+                {wch: 12},  // JENIS
+                {wch: 10}   // STATUS
+            ];
+
+            // Style the header
+            const headerStyle = {
+                font: { bold: true, size: 14 },
+                alignment: { horizontal: 'center' }
+            };
+
+            // Apply styles to header rows
+            ['A1', 'A2', 'A3', 'A4'].forEach(cell => {
+                if (ws[cell]) {
+                    ws[cell].s = headerStyle;
+                }
+            });
+
+            // Style column headers
+            const colHeaderStyle = {
+                font: { bold: true },
+                fill: { fgColor: { rgb: "CCCCCC" } },
+                alignment: { horizontal: 'center' }
+            };
+
+            ['A6', 'B6', 'C6', 'D6', 'E6', 'F6', 'G6'].forEach(cell => {
+                if (ws[cell]) {
+                    ws[cell].s = colHeaderStyle;
+                }
+            });
+
+            // Add worksheet to workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Senarai Temujanji');
+
+            // Save the file
+            XLSX.writeFile(wb, fileName);
+
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+            modal.hide();
+
+            alert(`Fail Excel '${fileName}' telah dimuat turun dengan jayanya!\n\nJumlah rekod: ${filteredAppointments.length}`);
+        }
+
+        // Blood Test Calendar Functions
+        function generateBloodCalendar() {
+            console.log('Generating blood calendar...');
+            const bloodCalendarBody = document.getElementById('bloodCalendarBody');
+            if (!bloodCalendarBody) {
+                console.log('Blood calendar body not found');
+                return;
+            }
+            
+            bloodCalendarBody.innerHTML = '';
+            
+            const year = currentBloodDate.getFullYear();
+            const month = currentBloodDate.getMonth();
+            
+            console.log('Blood calendar for:', year, month);
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            let currentWeekStart = new Date(startDate);
+            let weekCount = 0;
+            
+            while (currentWeekStart <= lastDay || weekCount < 6) {
+                const row = document.createElement('tr');
+                
+                for (let i = 0; i < 7; i++) {
+                    const cellDate = new Date(currentWeekStart);
+                    cellDate.setDate(currentWeekStart.getDate() + i);
+                    
+                    const cell = document.createElement('td');
+                    cell.style.height = '40px';
+                    cell.style.position = 'relative';
+                    cell.style.cursor = 'pointer';
+                    cell.style.padding = '5px';
+                    
+                    const dayNumber = cellDate.getDate();
+                    const isCurrentMonth = cellDate.getMonth() === month;
+                    const isToday = cellDate.getTime() === today.getTime();
+                    const isPastDate = cellDate < today;
+                    
+                    // Fix timezone - use local date string format
+                    const dateString = `${cellDate.getFullYear()}-${(cellDate.getMonth() + 1).toString().padStart(2, '0')}-${cellDate.getDate().toString().padStart(2, '0')}`;
+                    let isDateHoliday = false;
+                    try {
+                        isDateHoliday = isHoliday(cellDate);
+                    } catch (e) {
+                        console.log('Holiday check failed, continuing...');
+                    }
+                    const isWeekend = cellDate.getDay() === 0 || cellDate.getDay() === 6;
+                    
+                    const bloodTestCount = bloodTests.filter(test => test.date === dateString).length;
+                    
+                    let cellClass = 'text-center';
+                    if (!isCurrentMonth) {
+                        cell.style.backgroundColor = '#f8f9fa';
+                        cell.style.color = '#6c757d';
+                    } else if (isToday) {
+                        cell.style.backgroundColor = '#0d6efd';
+                        cell.style.color = '#ffffff';
+                        cell.style.fontWeight = 'bold';
+                    } else if (isPastDate) {
+                        cell.style.backgroundColor = '#e9ecef';
+                        cell.style.color = '#6c757d';
+                    } else if (isDateHoliday) {
+                        cell.style.backgroundColor = '#ffc107';
+                        cell.style.color = '#000000';
+                        cell.style.fontWeight = 'bold';
+                        const holidayInfo = getHolidayInfo(cellDate);
+                        cell.title = holidayInfo ? `Cuti: ${holidayInfo}` : 'Hari Cuti';
+                    } else if (isWeekend) {
+                        cell.style.backgroundColor = '#fff3cd';
+                        cell.style.color = '#856404';
+                    } else {
+                        cell.style.backgroundColor = '#d1edff';
+                        cell.style.color = '#000000';
+                        cell.style.fontWeight = 'bold';
+                    }
+                    
+                    cell.className = cellClass;
+                    
+                    let content = `<div style="font-weight: bold;">${dayNumber}</div>`;
+                    if (isCurrentMonth && !isPastDate && !isDateHoliday) {
+                        const maxSlots = 80;
+                        const available = maxSlots - bloodTestCount;
+                        content += `<div style="font-size: 0.6em; margin-top: 2px;">${bloodTestCount}/${maxSlots}</div>`;
+                    } else if (bloodTestCount > 0) {
+                        content += `<div style="font-size: 0.7em; color: #dc3545; font-weight: bold;">${bloodTestCount} ujian</div>`;
+                    }
+                    
+                    cell.innerHTML = content;
+                    
+                    if (isCurrentMonth && !isPastDate && !isDateHoliday) {
+                        cell.onclick = function() {
+                            selectBloodDate(dateString);
+                        };
+                        cell.setAttribute('data-date', dateString);
+                    } else if (isDateHoliday) {
+                        // Show holiday info when clicking on holiday date
+                        cell.onclick = function() {
+                            const holidayInfo = getHolidayInfo(cellDate);
+                            if (holidayInfo) {
+                                alert(`Cuti: ${holidayInfo}\nTarikh: ${dayNumber}/${month + 1}/${cellDate.getFullYear()}`);
+                            }
+                        };
+                        cell.style.cursor = 'pointer';
+                    }
+                    
+                    row.appendChild(cell);
+                }
+                
+                bloodCalendarBody.appendChild(row);
+                currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+                weekCount++;
+                
+                if (weekCount >= 6) break;
+            }
+            
+            console.log('Blood calendar generated with', weekCount, 'weeks');
+        }
+
+        function selectBloodDate(dateString) {
+            selectedBloodDate = dateString;
+            // Convert YYYY-MM-DD to DD-MM-YYYY format for display
+            const dateFormatted = formatDateDisplay(dateString);
+            document.getElementById('bloodTestDate').value = dateFormatted;
+            
+            // Remove previous selection
+            const cells = document.querySelectorAll('#bloodCalendarBody td');
+            cells.forEach(cell => {
+                cell.style.border = '';
+                cell.style.boxShadow = '';
+            });
+            
+            // Highlight selected date with green border
+            cells.forEach(cell => {
+                const cellDateStr = cell.getAttribute('data-date');
+                if (cellDateStr === dateString) {
+                    cell.style.border = '3px solid #198754';
+                    cell.style.boxShadow = '0 0 8px rgba(25, 135, 84, 0.5)';
+                }
+            });
+            
+            // Update stats for selected date
+            updateBloodStats(dateString);
+            filterBloodTestsByDate(dateString);
+        }
+
+        function changeBloodMonth() {
+            const monthSelect = document.getElementById('bloodMonthSelect');
+            currentBloodDate.setMonth(parseInt(monthSelect.value));
+            generateBloodCalendar();
+        }
+
+        function changeBloodYear() {
+            const yearSelect = document.getElementById('bloodYearSelect');
+            currentBloodDate.setFullYear(parseInt(yearSelect.value));
+            generateBloodCalendar();
+        }
+
+        function updateBloodSelectors() {
+            document.getElementById('bloodMonthSelect').value = currentBloodDate.getMonth();
+            document.getElementById('bloodYearSelect').value = currentBloodDate.getFullYear();
+        }
+
+        function previousBloodMonth() {
+            currentBloodDate.setMonth(currentBloodDate.getMonth() - 1);
+            updateBloodSelectors();
+            generateBloodCalendar();
+        }
+
+        function nextBloodMonth() {
+            currentBloodDate.setMonth(currentBloodDate.getMonth() + 1);
+            updateBloodSelectors();
+            generateBloodCalendar();
+        }
+
+        function updateBloodStats(selectedDate = null) {
+            // Stats functionality removed - keeping function for compatibility
+        }
+
+        function filterBloodTestsByDate(selectedDate) {
+            const filteredTests = bloodTests.filter(test => test.date === selectedDate);
+            displayBloodTests(filteredTests);
+            
+            // Update header to show filtered date
+            const bloodCard = document.querySelector('#bloodTestsList').closest('.card');
+            const cardHeader = bloodCard.querySelector('.card-header h6');
+            const selectedDateFormatted = formatDateDisplay(selectedDate);
+            cardHeader.innerHTML = `<i class="bi bi-list-ul"></i> Senarai Ujian Darah - ${selectedDateFormatted}`;
+            
+            // Add button to show all tests
+            if (!document.getElementById('showAllBloodBtn')) {
+                const showAllBtn = document.createElement('button');
+                showAllBtn.id = 'showAllBloodBtn';
+                showAllBtn.className = 'btn btn-sm btn-outline-secondary ms-2';
+                showAllBtn.innerHTML = '<i class="bi bi-list"></i> Tunjuk Semua';
+                showAllBtn.onclick = function() {
+                    displayBloodTests();
+                    cardHeader.innerHTML = `<i class="bi bi-list-ul"></i> Senarai Ujian Darah`;
+                    this.remove();
+                };
+                cardHeader.appendChild(showAllBtn);
+            }
+        }
+
+        // Blood Test Search Functions
+        function performBloodSearch() {
+            const searchTerm = document.getElementById('searchBloodTests').value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                displayBloodTests();
+                return;
+            }
+            
+            const filteredTests = bloodTests.filter(test => {
+                return test.patientName.toLowerCase() === searchTerm || 
+                       test.regNumber.toLowerCase() === searchTerm;
+            });
+            
+            displayBloodTests(filteredTests);
+        }
+
+        function clearBloodSearch() {
+            document.getElementById('searchBloodTests').value = '';
+            displayBloodTests();
+        }
+
+        // Blood Test Export Functions
+        let currentBloodExportType = '';
+
+        function showBloodExportModal(type) {
+            currentBloodExportType = type;
+            
+            // Hide all option divs
+            document.getElementById('bloodDailyOptions').style.display = 'none';
+            document.getElementById('bloodMonthlyOptions').style.display = 'none';
+            document.getElementById('bloodYearlyOptions').style.display = 'none';
+            
+            // Show appropriate options and set title
+            const exportTypeSpan = document.getElementById('bloodExportType');
+            const today = new Date();
+            
+            switch(type) {
+                case 'daily':
+                    document.getElementById('bloodDailyOptions').style.display = 'block';
+                    exportTypeSpan.textContent = 'Harian';
+                    const todayStr = today.toISOString().split('T')[0];
+                    document.getElementById('bloodExportDate').value = todayStr;
+                    break;
+                case 'monthly':
+                    document.getElementById('bloodMonthlyOptions').style.display = 'block';
+                    exportTypeSpan.textContent = 'Bulanan';
+                    document.getElementById('bloodExportMonth').value = today.getMonth();
+                    document.getElementById('bloodExportMonthYear').value = today.getFullYear();
+                    break;
+                case 'yearly':
+                    document.getElementById('bloodYearlyOptions').style.display = 'block';
+                    exportTypeSpan.textContent = 'Tahunan';
+                    document.getElementById('bloodExportYear').value = today.getFullYear();
+                    break;
+            }
+            
+            const modal = new bootstrap.Modal(document.getElementById('bloodExportModal'));
+            modal.show();
+        }
+
+        function generateBloodExcel() {
+            let filteredTests = [];
+            let fileName = '';
+            let dateRange = '';
+
+            // Filter blood tests based on export type
+            switch(currentBloodExportType) {
+                case 'daily':
+                    const selectedDate = document.getElementById('bloodExportDate').value;
+                    if (!selectedDate) {
+                        alert('Sila pilih tarikh');
+                        return;
+                    }
+                    filteredTests = bloodTests.filter(test => test.date === selectedDate);
+                    fileName = `Ujian_Darah_Harian_${selectedDate}.xlsx`;
+                    dateRange = selectedDate;
+                    break;
+                    
+                case 'monthly':
+                    const selectedMonth = document.getElementById('bloodExportMonth').value;
+                    const selectedMonthYear = document.getElementById('bloodExportMonthYear').value;
+                    if (!selectedMonth || !selectedMonthYear) {
+                        alert('Sila pilih bulan dan tahun');
+                        return;
+                    }
+                    
+                    const monthNames = ['Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
+                                      'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'];
+                    
+                    filteredTests = bloodTests.filter(test => {
+                        const testDate = new Date(test.date);
+                        return testDate.getMonth() == selectedMonth && testDate.getFullYear() == selectedMonthYear;
+                    });
+                    fileName = `Ujian_Darah_${monthNames[selectedMonth]}_${selectedMonthYear}.xlsx`;
+                    dateRange = `${monthNames[selectedMonth]} ${selectedMonthYear}`;
+                    break;
+                    
+                case 'yearly':
+                    const selectedYear = document.getElementById('bloodExportYear').value;
+                    if (!selectedYear) {
+                        alert('Sila pilih tahun');
+                        return;
+                    }
+                    filteredTests = bloodTests.filter(test => {
+                        const testDate = new Date(test.date);
+                        return testDate.getFullYear() == selectedYear;
+                    });
+                    fileName = `Ujian_Darah_Tahunan_${selectedYear}.xlsx`;
+                    dateRange = `Tahun ${selectedYear}`;
+                    break;
+            }
+
+            if (filteredTests.length === 0) {
+                alert(`Tiada ujian darah dijumpai untuk ${dateRange}`);
+                return;
+            }
+
+            // Sort tests by date
+            filteredTests.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            // Create Excel data
+            const excelData = [
+                ['LAPORAN UJIAN DARAH KK SIK'],
+                [`Tempoh: ${dateRange}`],
+                [`Tarikh Laporan: ${new Date().toLocaleDateString('ms-MY')}`],
+                [`Jumlah Ujian: ${filteredTests.length}`],
+                [], // Empty row
+                ['BIL', 'TARIKH', 'NAMA PESAKIT', 'NO. PENDAFTARAN', 'JENIS UJIAN', 'STATUS']
+            ];
+
+            // Add test data
+            filteredTests.forEach((test, index) => {
+                excelData.push([
+                    index + 1,
+                    test.date,
+                    test.patientName,
+                    test.regNumber,
+                    test.testTypes.join(', '),
+                    'Aktif'
+                ]);
+            });
+
+            // Create workbook and worksheet
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+            // Set column widths
+            ws['!cols'] = [
+                {wch: 5},   // BIL
+                {wch: 12},  // TARIKH
+                {wch: 25},  // NAMA PESAKIT
+                {wch: 18},  // NO. PENDAFTARAN
+                {wch: 30},  // JENIS UJIAN
+                {wch: 10}   // STATUS
+            ];
+
+            // Style the header
+            const headerStyle = {
+                font: { bold: true, size: 14 },
+                alignment: { horizontal: 'center' }
+            };
+
+            // Apply styles to header rows
+            ['A1', 'A2', 'A3', 'A4'].forEach(cell => {
+                if (ws[cell]) {
+                    ws[cell].s = headerStyle;
+                }
+            });
+
+            // Style column headers
+            const colHeaderStyle = {
+                font: { bold: true },
+                fill: { fgColor: { rgb: "CCCCCC" } },
+                alignment: { horizontal: 'center' }
+            };
+
+            ['A6', 'B6', 'C6', 'D6', 'E6', 'F6'].forEach(cell => {
+                if (ws[cell]) {
+                    ws[cell].s = colHeaderStyle;
+                }
+            });
+
+            // Add worksheet to workbook
+            XLSX.utils.book_append_sheet(wb, ws, 'Senarai Ujian Darah');
+
+            // Save the file
+            XLSX.writeFile(wb, fileName);
+
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('bloodExportModal'));
+            modal.hide();
+
+            alert(`Fail Excel '${fileName}' telah dimuat turun dengan jayanya!\n\nJumlah rekod: ${filteredTests.length}`);
+        }
+
+        // Date Picker Functions (Fixed Timezone Issue)
+        let currentPickerDate = new Date();
+        let isDatePickerVisible = false;
+
+        function toggleDatePicker() {
+            const datePicker = document.getElementById('datePicker');
+            if (isDatePickerVisible) {
+                datePicker.style.display = 'none';
+                isDatePickerVisible = false;
+            } else {
+                generateDatePicker();
+                datePicker.style.display = 'block';
+                isDatePickerVisible = true;
+            }
+        }
+
+        function generateDatePicker() {
+            const pickerBody = document.getElementById('pickerCalendarBody');
+            if (!pickerBody) return;
+            
+            pickerBody.innerHTML = '';
+            
+            const year = currentPickerDate.getFullYear();
+            const month = currentPickerDate.getMonth();
+            
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            document.getElementById('pickerTitle').textContent = `${monthNames[month]}, ${year}`;
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            // Fix timezone issue - use local date without timezone conversion
+            const today = new Date();
+            const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            
+            let currentWeekStart = new Date(startDate);
+            let weekCount = 0;
+            
+            while (currentWeekStart <= lastDay || weekCount < 6) {
+                const row = document.createElement('tr');
+                
+                for (let i = 0; i < 7; i++) {
+                    const cellDate = new Date(currentWeekStart);
+                    cellDate.setDate(currentWeekStart.getDate() + i);
+                    
+                    const cell = document.createElement('td');
+                    cell.style.padding = '8px';
+                    cell.style.cursor = 'pointer';
+                    cell.style.textAlign = 'center';
+                    cell.style.borderRadius = '4px';
+                    cell.style.width = '32px';
+                    cell.style.height = '32px';
+                    
+                    const dayNumber = cellDate.getDate();
+                    const isCurrentMonth = cellDate.getMonth() === month;
+                    const isToday = cellDate.getTime() === todayLocal.getTime();
+                    const isPastDate = cellDate < todayLocal;
+                    
+                    // Fix timezone - use local date string format
+                    const localDateString = `${cellDate.getFullYear()}-${(cellDate.getMonth() + 1).toString().padStart(2, '0')}-${cellDate.getDate().toString().padStart(2, '0')}`;
+                    const isSelected = selectedBloodDate === localDateString;
+                    
+                    let isHoliday = false;
+                    try {
+                        isHoliday = isDateHoliday(localDateString);
+                    } catch (e) {
+                        // Holiday check failed, continue
+                    }
+                    const isWeekend = cellDate.getDay() === 0 || cellDate.getDay() === 6;
+                    
+                    if (!isCurrentMonth) {
+                        cell.style.color = '#aaa';
+                        cell.style.backgroundColor = '#f8f9fa';
+                        cell.textContent = dayNumber;
+                    } else if (isSelected) {
+                        // Selected date - blue background like in the image
+                        cell.style.backgroundColor = '#007bff';
+                        cell.style.color = '#fff';
+                        cell.style.fontWeight = 'bold';
+                        cell.textContent = dayNumber;
+                    } else if (isToday) {
+                        cell.style.backgroundColor = '#e3f2fd';
+                        cell.style.color = '#1976d2';
+                        cell.style.fontWeight = 'bold';
+                        cell.style.border = '2px solid #1976d2';
+                        cell.textContent = dayNumber;
+                    } else if (isPastDate) {
+                        cell.style.color = '#999';
+                        cell.style.backgroundColor = '#f5f5f5';
+                        cell.textContent = dayNumber;
+                    } else if (isHoliday) {
+                        cell.style.color = '#fff';
+                        cell.style.backgroundColor = '#dc3545';
+                        cell.style.fontWeight = 'bold';
+                        cell.textContent = dayNumber;
+                        cell.title = 'Hari Cuti';
+                    } else if (isWeekend) {
+                        cell.style.color = '#856404';
+                        cell.style.backgroundColor = '#fff3cd';
+                        cell.textContent = dayNumber;
+                    } else {
+                        cell.style.color = '#000';
+                        cell.style.backgroundColor = '#fff';
+                        cell.style.fontWeight = '500';
+                        cell.textContent = dayNumber;
+                    }
+                    
+                    if (isCurrentMonth && !isPastDate && !isHoliday) {
+                        cell.onclick = function() {
+                            selectPickerDate(localDateString);
+                        };
+                        cell.setAttribute('data-date', localDateString);
+                        
+                        // Add hover effect
+                        cell.addEventListener('mouseenter', function() {
+                            if (!isSelected) {
+                                this.style.backgroundColor = '#e9ecef';
+                            }
+                        });
+                        cell.addEventListener('mouseleave', function() {
+                            if (!isSelected) {
+                                this.style.backgroundColor = '';
+                            }
+                        });
+                    }
+                    
+                    row.appendChild(cell);
+                }
+                
+                pickerBody.appendChild(row);
+                currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+                weekCount++;
+                
+                if (weekCount >= 6) break;
+            }
+        }
+
+        function selectPickerDate(dateString) {
+            selectedBloodDate = dateString;
+            const dateParts = dateString.split('-');
+            const formattedDate = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            document.getElementById('bloodTestDate').value = formattedDate;
+            
+            // Refresh the date picker to show selected date in blue
+            generateDatePicker();
+            
+            // Close date picker after a short delay to show the selection
+            setTimeout(() => {
+                document.getElementById('datePicker').style.display = 'none';
+                isDatePickerVisible = false;
+            }, 200);
+            
+            // Update main calendar selection
+            const mainCells = document.querySelectorAll('#bloodCalendarBody td');
+            mainCells.forEach(cell => {
+                cell.style.border = '';
+                cell.style.boxShadow = '';
+            });
+            
+            mainCells.forEach(cell => {
+                const cellDateStr = cell.getAttribute('data-date');
+                if (cellDateStr === dateString) {
+                    cell.style.border = '3px solid #198754';
+                    cell.style.boxShadow = '0 0 8px rgba(25, 135, 84, 0.5)';
+                }
+            });
+        }
+
+        function previousPickerMonth() {
+            currentPickerDate.setMonth(currentPickerDate.getMonth() - 1);
+            generateDatePicker();
+        }
+
+        function nextPickerMonth() {
+            currentPickerDate.setMonth(currentPickerDate.getMonth() + 1);
+            generateDatePicker();
+        }
+
+        function clearDate() {
+            selectedBloodDate = '';
+            document.getElementById('bloodTestDate').value = '';
+            generateDatePicker();
+            
+            // Clear main calendar selection
+            const mainCells = document.querySelectorAll('#bloodCalendarBody td');
+            mainCells.forEach(cell => {
+                cell.style.border = '';
+                cell.style.boxShadow = '';
+            });
+        }
+
+        function setToday() {
+            const today = new Date();
+            const localDateString = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+            selectPickerDate(localDateString);
+        }
+
+        // Close date picker when clicking outside
+        document.addEventListener('click', function(event) {
+            const datePicker = document.getElementById('datePicker');
+            const dateInput = document.getElementById('bloodTestDate');
+            
+            if (datePicker && dateInput && isDatePickerVisible) {
+                if (!datePicker.contains(event.target) && event.target !== dateInput) {
+                    datePicker.style.display = 'none';
+                    isDatePickerVisible = false;
+                }
+            }
+        });
+
+        // Search functionality for blood tests
+        document.getElementById('searchBloodTests').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            
+            if (searchTerm === '') {
+                // If search is empty, show all blood tests
+                displayBloodTests();
+                return;
+            }
+            
+            // Filter blood tests based on search term
+            const filteredBloodTests = bloodTests.filter(test => {
+                const nameMatch = test.patientName.toLowerCase().includes(searchTerm);
+                const regMatch = test.regNumber.toLowerCase().includes(searchTerm);
+                const dateMatch = test.date.includes(searchTerm);
+                const testTypesMatch = test.testTypes.some(type => type.toLowerCase().includes(searchTerm));
+                return nameMatch || regMatch || dateMatch || testTypesMatch;
+            });
+            
+            // Display filtered blood tests
+            const tbody = document.getElementById('bloodTestsList');
+            tbody.innerHTML = '';
+            
+            if (filteredBloodTests.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="5" class="text-center text-muted py-4">
+                        Tiada ujian darah dijumpai untuk "${this.value}"
+                    </td>
+                `;
+                tbody.appendChild(row);
+                return;
+            }
+            
+            filteredBloodTests.forEach((test, index) => {
+                const originalIndex = bloodTests.indexOf(test);
+                const testTypesDisplay = test.testTypes.join(', ');
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${test.date}</td>
+                    <td>${test.patientName}</td>
+                    <td>${test.regNumber}</td>
+                    <td>${testTypesDisplay}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteBloodTest(${originalIndex})" title="Padam">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        });
+
+        // Generate weekly and monthly formats
+        function generateWeeklyFormat() {
+            const weeklyDiv = document.getElementById('weeklyFormat');
+            if (!weeklyDiv) return;
+            
+            let html = '';
+            
+            // Get current date and find the most recent Sunday (base week)
+            const today = new Date();
+            const currentSunday = new Date(today);
+            currentSunday.setDate(today.getDate() - today.getDay()); // Go to Sunday of current week
+            
+            // Base date is 29/6/2025 (Sunday)
+            const baseDate = new Date(2025, 5, 29); // June 29, 2025
+            
+            // Calculate weeks difference between base date and current Sunday
+            const weeksDiff = Math.floor((currentSunday - baseDate) / (7 * 24 * 60 * 60 * 1000));
+            
+            // Generate weeks: 1/52, 2/52, 3/52, 5/52, 6/52 (skip 4/52)
+            const weekNumbers = [1, 2, 3, 5, 6];
+            for (let i = 0; i < weekNumbers.length; i++) {
+                const weekNumber = weekNumbers[i];
+                
+                // Calculate the correct date for each week starting from current Sunday + week offset
+                let weekDate = new Date(currentSunday);
+                weekDate.setDate(weekDate.getDate() + (weekNumber - 1) * 7);
+                
+                const sunday = new Date(weekDate);
+                const monday = new Date(weekDate); monday.setDate(sunday.getDate() + 1);
+                const tuesday = new Date(weekDate); tuesday.setDate(sunday.getDate() + 2);
+                const wednesday = new Date(weekDate); wednesday.setDate(sunday.getDate() + 3);
+                
+                const formatDate = (date) => `${date.getDate()}/${date.getMonth() + 1}`;
+                const getDayName = (date) => {
+                    const days = ['Ahd', 'Isn', 'Sel', 'Rab'];
+                    return days[date.getDay()];
+                };
+                
+                html += `<div style="margin-bottom: 2px; font-weight: 500;"><strong>${weekNumber}/52:</strong> `;
+                html += `${formatDate(sunday)} (${getDayName(sunday)}), `;
+                html += `${formatDate(monday)} (${getDayName(monday)}), `;
+                html += `${formatDate(tuesday)} (${getDayName(tuesday)}), `;
+                html += `${formatDate(wednesday)} (${getDayName(wednesday)})`;
+                html += `</div>`;
+            }
+            
+            weeklyDiv.innerHTML = html;
+        }
+        
+        function generateMonthlyFormat() {
+            const monthlyDiv = document.getElementById('monthlyFormat');
+            if (!monthlyDiv) return;
+            
+            let html = '';
+            
+            // Get current date and find the most recent Sunday (base week)
+            const today = new Date();
+            const currentSunday = new Date(today);
+            currentSunday.setDate(today.getDate() - today.getDay()); // Go to Sunday of current week
+            
+            // Generate 6 months (1/12 to 6/12)
+            for (let monthNumber = 1; monthNumber <= 6; monthNumber++) {
+                // Calculate month date: current Sunday + (monthNumber - 1) * 4 weeks
+                let monthDate = new Date(currentSunday);
+                monthDate.setDate(monthDate.getDate() + (monthNumber - 1) * 28); // 4 weeks = 28 days
+                
+                // Find the Sunday of that week
+                const monthSunday = new Date(monthDate);
+                monthSunday.setDate(monthDate.getDate() - monthDate.getDay());
+                
+                // Get all Sunday to Wednesday dates in that week
+                const targetDays = [];
+                for (let day = 0; day <= 3; day++) { // Sunday (0) to Wednesday (3)
+                    const targetDate = new Date(monthSunday);
+                    targetDate.setDate(monthSunday.getDate() + day);
+                    targetDays.push(targetDate);
+                }
+                
+                html += `<div style="margin-bottom: 2px; font-weight: 500;"><strong>${monthNumber}/12:</strong> `;
+                
+                const dayDates = targetDays.map(day => {
+                    const date = day.getDate();
+                    const month = day.getMonth() + 1;
+                    const dayName = ['Ahd', 'Isn', 'Sel', 'Rab'][day.getDay()];
+                    return `${date}/${month} (${dayName})`;
+                });
+                html += dayDates.join(', ');
+                
+                html += `</div>`;
+            }
+            
+            monthlyDiv.innerHTML = html;
+        }
+        
+        // Generate weekly format for blood test system
+        function generateWeeklyFormatBlood() {
+            const weeklyDiv = document.getElementById('weeklyFormatBlood');
+            if (!weeklyDiv) return;
+            
+            let html = '';
+            
+            // Get current date and find the most recent Sunday (base week)
+            const today = new Date();
+            const currentSunday = new Date(today);
+            currentSunday.setDate(today.getDate() - today.getDay()); // Go to Sunday of current week
+            
+            // Generate weeks: 1/52, 2/52, 3/52, 5/52, 6/52 (skip 4/52)
+            const weekNumbers = [1, 2, 3, 5, 6];
+            for (let i = 0; i < weekNumbers.length; i++) {
+                const weekNumber = weekNumbers[i];
+                
+                // Calculate the correct date for each week starting from current Sunday + week offset
+                let weekDate = new Date(currentSunday);
+                weekDate.setDate(weekDate.getDate() + (weekNumber - 1) * 7);
+                
+                const sunday = new Date(weekDate);
+                const monday = new Date(weekDate); monday.setDate(sunday.getDate() + 1);
+                const tuesday = new Date(weekDate); tuesday.setDate(sunday.getDate() + 2);
+                const wednesday = new Date(weekDate); wednesday.setDate(sunday.getDate() + 3);
+                
+                const formatDate = (date) => `${date.getDate()}/${date.getMonth() + 1}`;
+                const getDayName = (date) => {
+                    const days = ['Ahd', 'Isn', 'Sel', 'Rab'];
+                    return days[date.getDay()];
+                };
+                
+                html += `<div style="margin-bottom: 2px; font-weight: 500;"><strong>${weekNumber}/52:</strong> `;
+                html += `${formatDate(sunday)} (${getDayName(sunday)}), `;
+                html += `${formatDate(monday)} (${getDayName(monday)}), `;
+                html += `${formatDate(tuesday)} (${getDayName(tuesday)}), `;
+                html += `${formatDate(wednesday)} (${getDayName(wednesday)})`;
+                html += `</div>`;
+            }
+            
+            weeklyDiv.innerHTML = html;
+        }
+        
+        // Generate monthly format for blood test system
+        function generateMonthlyFormatBlood() {
+            const monthlyDiv = document.getElementById('monthlyFormatBlood');
+            if (!monthlyDiv) return;
+            
+            let html = '';
+            
+            // Get current date and find the most recent Sunday (base week)
+            const today = new Date();
+            const currentSunday = new Date(today);
+            currentSunday.setDate(today.getDate() - today.getDay()); // Go to Sunday of current week
+            
+            // Generate 6 months (1/12 to 6/12)
+            for (let monthNumber = 1; monthNumber <= 6; monthNumber++) {
+                // Calculate month date: current Sunday + (monthNumber - 1) * 4 weeks
+                let monthDate = new Date(currentSunday);
+                monthDate.setDate(monthDate.getDate() + (monthNumber - 1) * 28); // 4 weeks = 28 days
+                
+                // Find the Sunday of that week
+                const monthSunday = new Date(monthDate);
+                monthSunday.setDate(monthDate.getDate() - monthDate.getDay());
+                
+                // Get all Sunday to Wednesday dates in that week
+                const targetDays = [];
+                for (let day = 0; day <= 3; day++) { // Sunday (0) to Wednesday (3)
+                    const targetDate = new Date(monthSunday);
+                    targetDate.setDate(monthSunday.getDate() + day);
+                    targetDays.push(targetDate);
+                }
+                
+                html += `<div style="margin-bottom: 2px; font-weight: 500;"><strong>${monthNumber}/12:</strong> `;
+                
+                const dayDates = targetDays.map(day => {
+                    const date = day.getDate();
+                    const month = day.getMonth() + 1;
+                    const dayName = ['Ahd', 'Isn', 'Sel', 'Rab'][day.getDay()];
+                    return `${date}/${month} (${dayName})`;
+                });
+                html += dayDates.join(', ');
+                
+                html += `</div>`;
+            }
+            
+            monthlyDiv.innerHTML = html;
+        }
+        
+        // Update formats every Sunday
+        function checkAndUpdateFormats() {
+            const today = new Date();
+            if (today.getDay() === 0) { // Sunday
+                generateWeeklyFormat();
+                generateMonthlyFormat();
+                generateWeeklyFormatBlood();
+                generateMonthlyFormatBlood();
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize registration number formatting for both forms
+            formatRegistrationNumber();
+            formatBloodRegistrationNumber();
+            
+            // Initialize time slots when page loads
+            updateTimeSlots();
+            
+            // Generate weekly and monthly formats
+            generateWeeklyFormat();
+            generateMonthlyFormat();
+            generateWeeklyFormatBlood();
+            generateMonthlyFormatBlood();
+            
+            loadKedahHolidays().then(() => {
+                updateSelectors();
+                generateCalendar();
+                displayAppointments();
+                displayBloodTests();
+                
+                // Initialize blood calendar
+                updateBloodSelectors();
+                generateBloodCalendar();
+            });
+            
+            // Check for format updates every day
+            setInterval(checkAndUpdateFormats, 24 * 60 * 60 * 1000); // 24 hours
+        });
+    </script>
+</body>
+</html>
